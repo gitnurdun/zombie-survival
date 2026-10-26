@@ -1,0 +1,3413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>僵尸村庄 Zombie Village</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#000; }
+  body { font-family:"Microsoft YaHei", "PingFang SC", sans-serif; color:#e8e2d0; }
+  #game { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); cursor:none; image-rendering:auto; }
+  .ov {
+    position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:rgba(6,8,6,0.85); z-index:10; text-align:center; user-select:none;
+  }
+  .hidden { display:none; }
+  h1.title { font-size:56px; letter-spacing:14px; color:#b6c2b0; text-shadow:0 0 26px rgba(160,30,30,0.7), 0 3px 0 #000; }
+  h1.title span { color:#c0392b; }
+  .sub { color:#7d8a76; letter-spacing:6px; margin:6px 0 26px; font-size:14px; }
+  .controls {
+    background:rgba(20,26,18,0.75); border:1px solid #38452f; border-radius:6px;
+    padding:16px 34px; margin-bottom:26px; font-size:13px; line-height:2.1; color:#aab5a2; text-align:left;
+  }
+  .controls b { color:#d3ddc9; }
+  .btn {
+    background:#2a3423; color:#d9e2cf; border:1px solid #4a5a3c; border-radius:4px;
+    font-family:inherit; font-size:17px; letter-spacing:4px; padding:13px 42px; cursor:pointer; transition:all .15s;
+  }
+  .btn:hover { background:#3a4a2f; border-color:#7a9a5c; box-shadow:0 0 18px rgba(120,160,90,0.35); }
+  .btn.red { background:#4a1f1c; border-color:#7c352e; }
+  .btn.red:hover { background:#6a2a24; box-shadow:0 0 18px rgba(200,60,50,0.4); }
+  .hs { margin-top:20px; color:#6b7a63; font-size:13px; letter-spacing:2px; }
+  #shop { justify-content:flex-start; padding-top:4vh; overflow-y:auto; }
+  #shop h2 { font-size:26px; letter-spacing:8px; color:#c9d4c0; }
+  #shop .cash { color:#e8c559; font-size:18px; margin:4px 0 14px; letter-spacing:2px; }
+  .grid { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; max-width:900px; margin-bottom:20px; }
+  .card {
+    width:200px; background:rgba(24,30,20,0.92); border:1px solid #3c4a30; border-radius:6px;
+    padding:11px 13px; cursor:pointer; transition:all .12s; text-align:left;
+  }
+  .card:hover { border-color:#8aa46a; background:rgba(36,46,28,0.95); transform:translateY(-2px); }
+  .card.dis { opacity:0.38; cursor:not-allowed; }
+  .card.dis:hover { border-color:#3c4a30; transform:none; }
+  .card .nm { color:#d9e2cf; font-size:14px; margin-bottom:4px; }
+  .card .ds { color:#8a9682; font-size:11px; line-height:1.6; min-height:34px; }
+  .card .pr { color:#e8c559; font-size:14px; margin-top:7px; }
+  .card .pr.owned { color:#7a9a5c; }
+  #toast {
+    position:fixed; top:13%; left:50%; transform:translateX(-50%); z-index:20;
+    background:rgba(40,12,10,0.92); border:1px solid #8c352c; color:#f0c9c2;
+    padding:9px 26px; border-radius:4px; letter-spacing:2px; font-size:14px;
+    opacity:0; transition:opacity .25s; pointer-events:none;
+  }
+  #over h1 { font-size:48px; letter-spacing:10px; color:#c0392b; margin-bottom:12px; text-shadow:0 0 22px rgba(190,40,30,0.55); }
+  #over .stats { font-size:15px; line-height:2.1; color:#aab5a2; margin-bottom:22px; }
+  #over .stats b { color:#e0e8d8; }
+  #pause h2 { font-size:32px; letter-spacing:10px; color:#c9d4c0; margin-bottom:8px; }
+  #pause p { color:#7d8a76; font-size:13px; letter-spacing:2px; }
+  /* ── 货架商店 ── */
+  #shelf, #levels { justify-content:flex-start; padding-top:4.5vh; overflow-y:auto; }
+  #shelf h2, #levels h2 { font-size:26px; letter-spacing:8px; color:#c9d4c0; }
+  #shelf .cash, #levels .cash { color:#e8c559; font-size:18px; margin:4px 0 14px; letter-spacing:2px; }
+  .tabs { display:flex; gap:8px; margin-bottom:16px; }
+  .tab { background:rgba(20,26,18,0.8); border:1px solid #38452f; border-radius:4px;
+         padding:7px 22px; color:#8a9682; font-size:15px; letter-spacing:3px; }
+  .tab.on { background:#3a4a2f; border-color:#8aa46a; color:#e8e2c8; }
+  .rack { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; max-width:1180px; margin-bottom:16px; }
+  .wcard { width:140px; background:rgba(24,30,20,0.92); border:2px solid #3c4a30; border-radius:6px;
+           padding:9px 8px; text-align:center; transition:transform .1s, border-color .1s; }
+  .wcard.sel { border-color:#e8c559; background:rgba(50,46,26,0.96); transform:translateY(-5px) scale(1.06); }
+  .wcard.max { opacity:0.5; }
+  .wcard .icon { height:58px; display:flex; align-items:center; justify-content:center; margin-bottom:5px; }
+  .wcard .icon img { max-width:126px; max-height:58px; image-rendering:auto; }
+  .wcard .nm { color:#d9e2cf; font-size:13px; margin-bottom:3px; height:18px; overflow:hidden; }
+  .wcard .st { color:#8a9682; font-size:10px; line-height:1.55; height:32px; }
+  .wcard .pr { margin-top:6px; font-size:13px; color:#e8c559; }
+  .wcard .pr.own { color:#7a9a5c; }
+  .wcard .pr.no { color:#8c4038; }
+  .slotbar { color:#8a9682; font-size:13px; letter-spacing:2px; margin-bottom:12px; }
+  .slotbar b { color:#e8c559; }
+  .hintbar { color:#6b7a63; font-size:12px; letter-spacing:1px; margin-bottom:16px; }
+  .hintbar b { color:#c9d4c0; }
+  /* ── 结算 ── */
+  #result .stars { font-size:44px; letter-spacing:10px; margin:6px 0 18px; color:#3c4a30; }
+  #result .stars b { color:#e8c559; text-shadow:0 0 18px rgba(232,197,89,0.55); font-weight:normal; }
+  #result .stats { font-size:15px; line-height:2.1; color:#aab5a2; margin-bottom:22px; text-align:center; }
+  #result .stats b { color:#e0e8d8; }
+  #result .btn { margin: 0 6px; }
+  /* ── 关卡选择 ── */
+  #levels .lv { width:330px; background:rgba(24,30,20,0.94); border:2px solid #3c4a30;
+                border-radius:6px; padding:12px 14px; text-align:left; cursor:pointer; transition:all .12s; }
+  #levels .lv:hover { border-color:#8aa46a; transform:translateY(-3px); background:rgba(36,46,28,0.96); }
+  #levels .lv.lock { opacity:0.4; cursor:not-allowed; }
+  #levels .lv.lock:hover { border-color:#3c4a30; transform:none; }
+  #levels .lv .no { color:#6b7a63; font-size:11px; letter-spacing:1.5px; }
+  #levels .lv .nm { color:#e0e8d8; font-size:17px; margin:3px 0 5px; letter-spacing:2px; }
+  #levels .lv .df { color:#c8a24a; font-size:12px; letter-spacing:2px; }
+  #levels .lv .nt { color:#8a9682; font-size:11.5px; line-height:1.65; margin:7px 0 4px; min-height:44px; }
+  #levels .lv .st { color:#e8c559; font-size:15px; letter-spacing:3px; margin-top:6px; display:flex; justify-content:space-between; align-items:baseline; }
+  #levels .lv .rc { color:#7d8a76; font-size:11px; letter-spacing:0; }
+  #levels .lv .nw { color:#d08a5a; font-size:11px; margin-top:4px; letter-spacing:0.5px; }
+  #levels .lv .boss { color:#c0392b; font-size:12px; margin-top:4px; letter-spacing:2px; }
+</style>
+</head>
+<body>
+<canvas id="game" width="1280" height="720"></canvas>
+
+<div id="menu" class="ov">
+  <h1 class="title">僵尸<span>村庄</span>2</h1>
+  <div class="sub">ZOMBIE VILLAGE 2 · 你是村里最后的幸存者</div>
+  <div class="controls">
+    <b>← →</b> 左右移动（同时决定朝向）&nbsp;&nbsp; <b>↑</b> 跳跃<br>
+    <b>空格</b> 开火 / 挥砍（按住连发）&nbsp;&nbsp; <b>X</b> 换武器 &nbsp;&nbsp; <b>1 / 2 / 3</b> 直接选槽<br>
+    <b>P / ESC</b> 暂停 &nbsp;&nbsp; <b>M</b> 静音 &nbsp;&nbsp; <b>A / D / W</b> 也可以移动<br>
+    枪只能打水平方向 —— <b>跳起来开枪能打中头（爆头双倍伤害）</b><br>
+    走到街边亮着<b style="color:#9fe8a8">绿灯</b>的房子门口<b>向上跳</b>就能进去躲<br>
+    打光子弹就只能切近战 · 打碎垃圾桶木箱能补给 · 走到街道尽头的栅栏就算过关
+  </div>
+  <button class="btn" id="startBtn">进 入 关 卡 选 择</button>
+  <div class="hs" id="menuHs"></div>
+</div>
+
+<div id="shelf" class="ov hidden">
+  <h2>武 器 货 架</h2>
+  <div class="cash" id="shelfCash">金币 $0</div>
+  <div class="tabs" id="shelfTabs"></div>
+  <div class="rack" id="shelfRack"></div>
+  <div class="slotbar" id="shelfSlots"></div>
+  <div class="hintbar">
+    <b>← →</b> 选择 &nbsp;·&nbsp; <b>↑ ↓</b> 切分类 &nbsp;·&nbsp; <b>Enter</b> 购买 / 升级 &nbsp;·&nbsp;
+    <b>U</b> 撤销 &nbsp;·&nbsp; <b>1 2 3</b> 换装备槽 &nbsp;·&nbsp; <b>Esc</b> 结束本关
+  </div>
+  <button class="btn" id="shelfDoneBtn">离 开 货 架</button>
+</div>
+
+<div id="result" class="ov hidden">
+  <h1 class="title" id="resTitle">通 关</h1>
+  <div class="stars" id="resStars"></div>
+  <div class="stats" id="resStats"></div>
+  <button class="btn" id="resNextBtn">下 一 关</button>
+  <button class="btn red" id="resMenuBtn">回 关 卡 选 择</button>
+</div>
+
+<div id="levels" class="ov hidden">
+  <h2>关 卡 选 择</h2>
+  <div class="cash" id="lvCash">金币 $0</div>
+  <div class="grid" id="lvGrid"></div>
+  <div class="hintbar">金币、武器、升级都会永久保存</div>
+</div>
+
+<div id="pause" class="ov hidden">
+  <h2>暂 停</h2>
+  <p>按 P 或 ESC 继续</p>
+</div>
+
+<div id="toast"></div>
+
+<script>
+'use strict';
+// ============================== 基础 ==============================
+const VW = 1280, VH = 720;
+const GROUND = 610;
+// v2：从常量改成可变 —— 每个关卡按「路段拼接」的结果重新赋值（见 buildLevel）
+let WORLD_W = 4400;
+// 站在最低地面时的枪口高度 = GROUND - player.h + 34 = 570
+const GUN_Y = GROUND - 74 + 34;
+// 僵尸判定框在垂直方向上下各扩展这么多像素。
+// 起因：子弹在几何上是一个点，而僵尸只有 60-70px 高。若按精确切片判定，
+// 可爆头的跳跃高度窗口只有 ~18px（跳跃顶点却有 104px），得卡在起跳后 30ms 内开枪才打得到，
+// 跳得稍高子弹还会从头顶飞过。放宽 70px 后，跳跃 / 站在高台上开枪都能稳定命中。
+const V_TOL = 70;
+// 站在高处开枪时，子弹在这么多水平距离内斜向下压回腰部高度（GUN_Y），之后恢复水平。
+// 这样从高台或空中射击依然打得到地面的僵尸，视觉上也是"居高临下扫射"。
+const FALL_DIST = 280;
+// 层高（相邻两层的高度差）。一跳的最大高度是 vz²/(2g) = 560²/3000 ≈ 104.5px，
+// 留约 16px 余量所以取 88 —— 再高就跳不上去了。
+const FLOOR_H = 88;
+
+// ============================== 多层地形 ==============================
+// 平台 = 某个高度 z 上的一段可站立区间。z 越大越高（0 = 最低地面）。
+// 最低地面本身也是一个铺满全图的平台，所以 floorAt 永远能返回至少一个结果。
+let floors = [];
+function floorAt(x, fromZ) {
+  let best = null;
+  for (const f of floors) {
+    if (x < f.x0 || x > f.x1) continue;
+    if (f.z > fromZ + 0.001) continue;   // 只考虑不高于 fromZ 的平台（脚下的）
+    if (!best || f.z > best.z) best = f;
+  }
+  return best;
+}
+// 站在平台上的重力 —— 玩家和僵尸共用同一套逻辑。
+// 只在下降时检测落地，所以从下面可以穿过平台往上跳；走出边缘会自由落体到更低的一层。
+function stepOnFloors(e, dt, landSfx) {
+  if (e.onGround) {
+    const f = floorAt(e.x, e.z + 1);
+    if (!f || f.z < e.z - 1) { e.onGround = false; e.vz = 0; }     // 脚下空了
+  }
+  if (!e.onGround) {
+    const prevZ = e.z;
+    e.vz -= 1500 * dt;
+    e.z += e.vz * dt;
+    if (e.vz < 0) {
+      const f = floorAt(e.x, prevZ);
+      if (f && e.z <= f.z) {
+        e.z = f.z; e.vz = 0; e.onGround = true; e.floor = f;
+        if (landSfx) SFX.land();
+      }
+    }
+  }
+}
+const TAU = Math.PI * 2;
+const rand = (a, b) => a + Math.random() * (b - a);
+const irand = (a, b) => Math.floor(rand(a, b + 1));
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+const choice = arr => arr[irand(0, arr.length - 1)];
+
+const cvs = document.getElementById('game');
+const ctx = cvs.getContext('2d');
+function fitCanvas() {
+  const s = Math.min(window.innerWidth / VW, window.innerHeight / VH);
+  cvs.style.width = VW * s + 'px';
+  cvs.style.height = VH * s + 'px';
+}
+window.addEventListener('resize', fitCanvas);
+fitCanvas();
+
+// ============================== 输入 ==============================
+// 纯键盘操作：没有鼠标瞄准，枪口只能水平指向玩家的朝向。
+// keys = 电平量（按住期间一直为 true）；pressed = 边沿量（只在按下的那一帧为 true，在 loop() 末尾清空）
+const keys = {};
+const pressed = {};
+const SLOTS = 3;   // 武器槽位数
+
+function cycleSlot() {
+  for (let k = 1; k <= SLOTS; k++) {
+    const i = (player.slot + k) % SLOTS;
+    if (player.weapons[i]) { player.slot = i; SFX.swap(); return; }
+  }
+}
+function selectSlot(i) {
+  if (!player.weapons[i] || i === player.slot) return;
+  player.slot = i; SFX.swap();
+}
+function toggleMute() {
+  if (!master) return;
+  master.gain.value = master.gain.value > 0 ? 0 : 0.45;
+  toast(master.gain.value > 0 ? '音效开启' : '音效静音');
+}
+
+window.addEventListener('keydown', e => {
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+  if (!e.repeat) pressed[e.code] = true;
+  keys[e.code] = true;
+  if (e.code === 'KeyP' || e.code === 'Escape') {
+    if (G.state === 'play') togglePause();
+    else if (G.state === 'shelf') closeShelf();
+    else if (G.state === 'result') openLevels();
+    else if (G.state === 'menu') { hide('levels'); show('menu'); }
+  }
+  if (G.state === 'shelf') {
+    // 货架：纯方向键驱动（↑↓ 切分类，←→ 选物品）
+    if (e.code === 'ArrowLeft') shelfNav('left');
+    else if (e.code === 'ArrowRight') shelfNav('right');
+    else if (e.code === 'ArrowUp') shelfNav('up');
+    else if (e.code === 'ArrowDown') shelfNav('down');
+    else if (e.code === 'Enter') shelfConfirm();
+    else if (e.code === 'KeyU') shelfUndo();
+    else if (e.code === 'Digit1' || e.code === 'Digit2' || e.code === 'Digit3') {
+      shelfEquipSlot(+e.code.slice(5) - 1);
+    }
+  } else if (G.state === 'play' && !G.paused) {
+    if (e.code === 'KeyE') interact();
+    if (e.code === 'KeyX') cycleSlot();
+    const d = ['Digit1', 'Digit2', 'Digit3'].indexOf(e.code);
+    if (d >= 0) selectSlot(d);
+  }
+  if (e.code === 'KeyM') toggleMute();
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+// 切窗口时清空按住的键，否则回来会一直朝那个方向跑
+window.addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+window.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && G.state === 'play' && !G.paused) togglePause();
+});
+
+// ============================== 音效 ==============================
+let AC = null, master = null, noiseB = null;
+function initAudio() {
+  if (AC) return;
+  try {
+    AC = new (window.AudioContext || window.webkitAudioContext)();
+    master = AC.createGain(); master.gain.value = 0.45; master.connect(AC.destination);
+    noiseB = AC.createBuffer(1, AC.sampleRate, AC.sampleRate);
+    const d = noiseB.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  } catch (e) { AC = null; }
+}
+function tone(f, dur, vol, type, f2, delay) {
+  if (!AC) return;
+  const t = AC.currentTime + (delay || 0);
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type || 'sine';
+  o.frequency.setValueAtTime(f, t);
+  if (f2) o.frequency.exponentialRampToValueAtTime(Math.max(1, f2), t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(master);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+function noiseHit(f, dur, vol, q, type, delay) {
+  if (!AC) return;
+  const t = AC.currentTime + (delay || 0);
+  const src = AC.createBufferSource(); src.buffer = noiseB; src.loop = true;
+  const flt = AC.createBiquadFilter();
+  flt.type = type || 'bandpass'; flt.frequency.value = f; flt.Q.value = q || 1;
+  const g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(flt); flt.connect(g); g.connect(master);
+  src.start(t); src.stop(t + dur + 0.1);
+}
+const SFX = {
+  pistol() { noiseHit(1700, 0.1, 0.2, 1.2); tone(150, 0.06, 0.13, 'triangle', 60); },
+  shotgun() { noiseHit(600, 0.28, 0.38, 0.7); tone(85, 0.15, 0.28, 'triangle', 40); },
+  smg() { noiseHit(2100, 0.06, 0.13, 1.5); },
+  flame() { noiseHit(500, 0.18, 0.1, 0.6, 'lowpass'); },
+  lightning() { noiseHit(2600, 0.16, 0.22, 3); tone(90, 0.18, 0.18, 'sawtooth', 40); },
+  swing() { noiseHit(900, 0.09, 0.08, 2, 'bandpass'); },
+  melee() { tone(140, 0.07, 0.2, 'square', 80); noiseHit(350, 0.08, 0.16, 1, 'lowpass'); },
+  hit() { tone(160, 0.05, 0.08, 'square', 95); },
+  head() { tone(300, 0.05, 0.14, 'square', 180); tone(520, 0.07, 0.1, 'square', undefined, 0.04); },
+  die() { tone(110, 0.28, 0.14, 'sawtooth', 40); noiseHit(400, 0.2, 0.12, 0.8, 'lowpass'); },
+  hurt() { noiseHit(260, 0.24, 0.3, 0.8, 'lowpass'); tone(72, 0.2, 0.24, 'triangle', 38); },
+  coin() { tone(990, 0.06, 0.1, 'square'); tone(1480, 0.09, 0.09, 'square', undefined, 0.05); },
+  buy() { tone(880, 0.07, 0.13, 'square'); tone(1320, 0.09, 0.11, 'square', undefined, 0.06); },
+  deny() { tone(160, 0.12, 0.15, 'square', 110); },
+  swap() { noiseHit(2800, 0.04, 0.1, 3); },
+  door() { noiseHit(220, 0.25, 0.2, 1, 'lowpass'); },
+  breakIn() { noiseHit(150, 0.4, 0.35, 0.7, 'lowpass'); tone(60, 0.3, 0.25, 'triangle', 30); },
+  wave() { tone(196, 0.45, 0.18, 'sawtooth'); tone(147, 0.6, 0.18, 'sawtooth', undefined, 0.4); },
+  clear() { tone(523, 0.12, 0.15, 'sine'); tone(659, 0.12, 0.15, 'sine', undefined, 0.11); tone(784, 0.2, 0.15, 'sine', undefined, 0.22); },
+  groan(v) { tone(rand(65, 105), 0.55, 0.1 * v, 'sawtooth', rand(45, 75)); },
+  giant() { tone(50, 0.9, 0.3, 'sawtooth', 32); noiseHit(120, 0.7, 0.25, 0.7, 'lowpass'); },
+  bat() { tone(1400, 0.05, 0.08, 'square'); tone(1800, 0.05, 0.07, 'square', undefined, 0.06); },
+  revive() { tone(392, 0.15, 0.15, 'sine'); tone(523, 0.15, 0.15, 'sine', undefined, 0.14); tone(659, 0.3, 0.16, 'sine', undefined, 0.28); },
+  jump() { noiseHit(800, 0.08, 0.06, 2); },
+  land() { noiseHit(200, 0.09, 0.1, 1, 'lowpass'); },
+  spit() { noiseHit(1150, 0.17, 0.15, 2.2, 'bandpass'); tone(320, 0.15, 0.08, 'sawtooth', 130); },
+  fuse() { tone(1500, 0.05, 0.10, 'square'); tone(1500, 0.05, 0.10, 'square', undefined, 0.12); },
+  boom() { noiseHit(200, 0.55, 0.42, 0.55, 'lowpass'); tone(58, 0.45, 0.32, 'triangle', 26); },
+};
+
+// ============================== 数据 ==============================
+// v2：17 把武器，3 个类别，每把 3 级（满级变形）。
+// 弹药分 2 类 —— bullet（实弹，热武器）/ cell（能量，科幻武器）。冷兵器不耗弹。
+// 商店不卖弹药，只能靠打碎场景道具和安全屋刷新。
+//
+// 结构：顶层字段是 1 级数值，lv[] 里只写"该等级相对基础变化的字段"（绝对值，不用倍率，
+// 方便直接读数值平衡）。makeWeapon 会把 lv[lv-1] 合并进 w.def —— 于是所有
+// 现有战斗代码里的 w.def.dmg / w.def.rate 全都自动生效，一行都不用改。见 refreshWeapon。
+// sfx = 复用哪个已有音效（没有的话回落到 generic）。
+const WEAPONS = {
+  // ═══════════ 冷兵器（不耗弹） ═══════════
+  bat: { id:'bat', cat:'melee', name:'木棍', price:0, upCost:[350, 900], order:1,
+    desc:'挥砍 · 击退 · 不耗弹药', shape:'club', L:42, col:'#8a6a42',
+    melee:true, auto:true, dmg:26, rate:0.42, arc:80, kb:340,
+    lv:[ {name:'木棍'},
+         {name:'棒球棒', dmg:34, arc:92, kb:400, col:'#a8823f'},
+         {name:'狼牙棒', dmg:48, arc:104, kb:470, col:'#6a4e2c'} ] },
+
+  axe: { id:'axe', cat:'melee', name:'消防斧', price:420, upCost:[500, 1300], order:2,
+    desc:'重击 · 破甲 · 出手慢', shape:'axe', L:46, col:'#8a2f22',
+    melee:true, auto:true, dmg:52, rate:0.72, arc:72, kb:280, noArmor:true,
+    lv:[ {name:'消防斧'},
+         {name:'破门斧', dmg:68, rate:0.68},
+         {name:'武士刀', dmg:86, rate:0.5, arc:96, col:'#c8ccd4'} ] },
+
+  saw: { id:'saw', cat:'melee', name:'电锯', price:1100, upCost:[800, 1800], order:3,
+    desc:'持续切割 · 贴身最强 · 要贴上去', shape:'saw', L:34, col:'#8a3a22',
+    melee:true, auto:true, dmg:15, rate:0.09, arc:56, kb:60,
+    lv:[ {name:'电锯'},
+         {name:'强化电锯', dmg:19},
+         {name:'双刃电锯', dmg:24, arc:72, col:'#c0c8d0'} ] },
+
+  shovel:{ id:'shovel', cat:'melee', name:'铁锹', price:300, upCost:[420, 1100], order:4,
+    desc:'强击退 · 把僵尸铲飞', shape:'shovel', L:50, col:'#7a6a52',
+    melee:true, auto:true, dmg:30, rate:0.62, arc:76, kb:900,
+    lv:[ {name:'铁锹'},
+         {name:'工兵铲', dmg:38, kb:1050},
+         {name:'破城铲', dmg:50, rate:0.55, arc:88, kb:1250} ] },
+
+  dart: { id:'dart', cat:'melee', name:'飞镖', price:520, upCost:[600, 1500], order:5,
+    desc:'投掷 · 穿透 · 无限回收', shape:'dart', L:16, col:'#c0c8d4',
+    recover:true, auto:true, dmg:22, rate:0.3, spd:760, spread:0.05, kb:0.5, sfx:'swing',
+    lv:[ {name:'飞镖'},
+         {name:'手里剑', dmg:30, rate:0.26},
+         {name:'回旋刃', dmg:40, rate:0.22, spd:880} ] },
+
+  machete:{ id:'machete', cat:'melee', name:'大砍刀', price:680, upCost:[550, 1400], order:6,
+    desc:'挥砍范围大 · 最均衡的近战', shape:'machete', L:52, col:'#9aa4ae',
+    melee:true, auto:true, dmg:40, rate:0.5, arc:100, kb:300,
+    lv:[ {name:'大砍刀'},
+         {name:'开山刀', dmg:54, arc:112},
+         {name:'刈草机', dmg:70, rate:0.42, arc:132} ] },
+
+  sword: { id:'sword', cat:'melee', name:'长剑', price:1500, upCost:[1100, 2600], order:7,
+    desc:'出手快 · 暴击高', shape:'sword', L:58, col:'#d0d8e0',
+    melee:true, auto:true, dmg:46, rate:0.36, arc:96, kb:260, crit:0.22, critMul:2.5,
+    lv:[ {name:'长剑'},
+         {name:'巨剑', dmg:64, arc:120, kb:340},
+         {name:'裁决之刃', dmg:84, rate:0.3, arc:140, crit:0.3} ] },
+
+  // ═══════════ 热武器（实弹） ═══════════
+  pistol:{ id:'pistol', cat:'gun', name:'手枪', price:150, upCost:[400, 1200], order:1,
+    desc:'单发 · 精准 · 弹药便宜', shape:'pistol', L:20, col:'#1c1c20',
+    ammoType:'bullet', ammoMax:120, startAmmo:48, sfx:'pistol',
+    dmg:16, rate:0.28, spd:980, spread:0.012, crit:0.10, critMul:2, kb:1,
+    lv:[ {name:'手枪'},
+         {name:'战术手枪', dmg:20, rate:0.23, ammoMax:160, crit:0.13},
+         {name:'沙漠之鹰', dmg:34, rate:0.31, crit:0.22, critMul:2.5, pierce:1, col:'#b0aeb8'} ] },
+
+  uzi: { id:'uzi', cat:'gun', name:'冲锋枪', price:750, upCost:[600, 1500], order:2,
+    desc:'全自动 · 泼水般倾泻', shape:'smg', L:24, col:'#25252a',
+    ammoType:'bullet', ammoMax:240, startAmmo:120, sfx:'smg',
+    dmg:8, rate:0.085, spd:880, spread:0.07, auto:true, kb:0.4,
+    lv:[ {name:'冲锋枪'},
+         {name:'冲锋枪Mk2', dmg:10, spread:0.055},
+         {name:'双持UZI', dmg:13, rate:0.07, ammoMax:360} ] },
+
+  pump: { id:'pump', cat:'gun', name:'泵动霰弹', price:400, upCost:[500, 1400], order:3,
+    desc:'一次 8 弹丸 · 大击退', shape:'shotgun', L:32, col:'#3a2a1c',
+    ammoType:'bullet', ammoMax:60, startAmmo:24, sfx:'shotgun',
+    dmg:9, rate:0.9, spd:820, spread:0.2, pellets:8, kb:2.6,
+    lv:[ {name:'泵动霰弹'},
+         {name:'战斗霰弹', dmg:11, rate:0.72},
+         {name:'战术霰弹', dmg:13, pellets:11, rate:0.62, ammoMax:80} ] },
+
+  magnum:{ id:'magnum', cat:'gun', name:'左轮', price:900, upCost:[700, 1700], order:4,
+    desc:'高伤 · 穿透 · 出手慢', shape:'revolver', L:22, col:'#2a2a30',
+    ammoType:'bullet', ammoMax:48, startAmmo:24, sfx:'pistol',
+    dmg:34, rate:0.55, spd:1050, spread:0.01, crit:0.18, critMul:2.4, pierce:1, kb:1.8,
+    lv:[ {name:'左轮'},
+         {name:'大威力左轮', dmg:46},
+         {name:'马格南', dmg:62, pierce:2, crit:0.26, col:'#c8c0a0'} ] },
+
+  minigun:{ id:'minigun', cat:'gun', name:'转管机枪', price:2200, upCost:[1500, 3200], order:5,
+    desc:'加特林 · 射速拉满 · 拖慢移动', shape:'minigun', L:38, col:'#3a3a42',
+    ammoType:'bullet', ammoMax:600, startAmmo:300, sfx:'smg', slow:0.75,
+    dmg:9, rate:0.045, spd:900, spread:0.11, auto:true, kb:0.3,
+    lv:[ {name:'转管机枪'},
+         {name:'预热转管', dmg:11, spread:0.09},
+         {name:'火神炮', dmg:14, rate:0.035, ammoMax:900} ] },
+
+  rpg: { id:'rpg', cat:'gun', name:'火箭筒', price:2600, upCost:[1800, 3800], order:6,
+    desc:'爆炸 · 范围伤害 · 会炸到自己', shape:'rpg', L:40, col:'#4a5a32',
+    ammoType:'bullet', ammoMax:24, startAmmo:10, sfx:'shotgun',
+    dmg:90, rate:1.5, spd:520, kb:3, explode:{ r:150, dmg:90, selfHurt:0.4 },
+    lv:[ {name:'火箭筒'},
+         {name:'集束火箭', dmg:120, explode:{r:170, dmg:120, selfHurt:0.4}},
+         {name:'多联集束', dmg:150, rate:1.2, explode:{r:200, dmg:150, selfHurt:0.35}} ] },
+
+  // ═══════════ 科幻武器（能量） ═══════════
+  tesla: { id:'tesla', cat:'scifi', name:'特斯拉电弧枪', price:1500, upCost:[900, 2200], order:1,
+    desc:'闪电链 · 跳跃 4 目标 · 无视护甲', shape:'energy', L:40, col:'#2a3a5a', accent:'#6ab0ff',
+    ammoType:'cell', ammoMax:80, startAmmo:40, sfx:'lightning',
+    dmg:46, rate:0.8, chain:4, chainRange:620, noArmor:true, kb:1.4,
+    lv:[ {name:'特斯拉电弧枪'},
+         {name:'高压电弧枪', dmg:60, chain:5},
+         {name:'风暴发生器', dmg:78, chain:7, chainRange:820, rate:0.64, accent:'#a0d8ff'} ] },
+
+  cryo: { id:'cryo', cat:'scifi', name:'冷冻射线', price:1200, upCost:[800, 1900], order:2,
+    desc:'减速 · 冻住僵尸', shape:'energy', L:34, col:'#22405a', accent:'#8fd8ff',
+    ammoType:'cell', ammoMax:240, startAmmo:120, sfx:'flame',
+    dmg:14, rate:0.06, auto:true, freeze:1.6, beam:true, kb:0.3,
+    lv:[ {name:'冷冻射线'},
+         {name:'冰霜射线', dmg:19, freeze:2.0},
+         {name:'冰霜炮', dmg:26, freeze:2.6, accent:'#c8f0ff'} ] },
+
+  plasma:{ id:'plasma', cat:'scifi', name:'等离子切割器', price:1900, upCost:[1200, 2800], order:3,
+    desc:'穿透 · 融化护甲', shape:'energy', L:30, col:'#3a2a4a', accent:'#c07aff',
+    ammoType:'cell', ammoMax:120, startAmmo:60, sfx:'lightning',
+    dmg:40, rate:0.4, spd:700, spread:0.03, pierce:2, noArmor:true, crit:0.14, kb:1.2,
+    lv:[ {name:'等离子切割器'},
+         {name:'等离子步枪', dmg:52, pierce:3},
+         {name:'裂解炮', dmg:68, pierce:4, crit:0.20, accent:'#e0a0ff'} ] },
+
+  flamer:{ id:'flamer', cat:'scifi', name:'火焰喷射器', price:1700, upCost:[1000, 2400], order:4,
+    desc:'持续火焰 · 点燃僵尸', shape:'flamer', L:36, col:'#4a3020', accent:'#ff8a3a',
+    ammoType:'cell', ammoMax:240, startAmmo:120, sfx:'flame',
+    dmg:34, rate:0.03, auto:true, flame:true, kb:0.2,
+    lv:[ {name:'火焰喷射器'},
+         {name:'燃烧喷射器', dmg:44},
+         {name:'地狱火', dmg:56, rate:0.025, accent:'#ffcc60'} ] },
+};
+// 商店 / 图鉴的显示顺序
+const WEP_ORDER = ['bat','axe','saw','shovel','dart','machete','sword',
+                   'pistol','uzi','pump','magnum','minigun','rpg',
+                   'tesla','cryo','plasma','flamer'];
+const CAT_NAME = { melee:'冷兵器', gun:'热武器', scifi:'科幻武器' };
+const CAT_OF  = { melee:'冷兵器（不耗弹）', gun:'热武器（实弹）', scifi:'科幻武器（能量）' };
+// v2 速度下调 ×0.8（玩家同步 250→190）。瘦尸原本 240，和玩家几乎一样快，是最劝退的部分。
+// from  = 从第几关开始出现 —— 不做"一上来所有类型全有"，每关逐步解锁新敌人。
+// smash = 砸安全屋的伤害倍率；climb = 能否站上高台；armor = 正面减伤（跳射/破甲武器无视）
+// 注意 h ≥ 56：子弹固定在 y=570、僵尸脚在 y=610，矮于 40px 会被水平弹道直接飞过。
+const ZTYPES = {
+  normal:  { name:'村民僵尸',   from:1,  hp:46,  spd:42,  w:34, h:64,  dmg:8,  cash:6,  atk:0.9, kb:1,    skin:'#7fae5a', eye:'#fff',    smash:1 },
+  fast:    { name:'瘦尸',       from:2,  hp:26,  spd:192, w:30, h:60,  dmg:6,  cash:9,  atk:0.6, kb:1.3,  skin:'#9c8a4a', eye:'#ff3020', smash:1 },
+  spitter: { name:'酸液喷吐者', from:3,  hp:52,  spd:34,  w:38, h:66,  dmg:7,  cash:16, atk:1.2, kb:0.5,  skin:'#6f8a4a', eye:'#b0ff40', smash:1,
+             ranged:{ cd:2.6, spd:380, dmg:9, elem:'acid', keep:330 } },
+  heavy:   { name:'重甲尸',     from:4,  hp:180, spd:27,  w:44, h:70,  dmg:18, cash:18, atk:1.1, kb:0.12, skin:'#6e8a72', eye:'#ffd050', smash:2, armor:0.45 },
+  bomber:  { name:'自爆尸',     from:5,  hp:60,  spd:78,  w:40, h:62,  dmg:4,  cash:22, atk:0.8, kb:0.6,  skin:'#8a5a3a', eye:'#ff8020', smash:1,
+             explode:{ r:120, dmg:30, fuse:0.7 } },
+  giant:   { name:'巨型尸',     from:6,  hp:900, spd:35,  w:76, h:118, dmg:30, cash:80, atk:1.3, kb:0.05, skin:'#5e9450', eye:'#ff3020', smash:3, noHeadshot:true },
+  crawler: { name:'变异犬',     from:7,  hp:34,  spd:236, w:56, h:56,  dmg:9,  cash:12, atk:0.5, kb:1.1,  skin:'#7a6a52', eye:'#ff4020', smash:1, shape:'beast', climb:true },
+  burner:  { name:'燃烧者',     from:8,  hp:66,  spd:32,  w:38, h:66,  dmg:8,  cash:20, atk:1.2, kb:0.5,  skin:'#8a5a2a', eye:'#ffb040', smash:1,
+             ranged:{ cd:3.2, spd:340, dmg:7, elem:'fire', keep:370 } },
+  leaper:  { name:'跳跃者',     from:9,  hp:70,  spd:64,  w:36, h:66,  dmg:14, cash:24, atk:1.0, kb:0.6,  skin:'#5a7a6a', eye:'#80ffd0', smash:1,
+             pounce:{ cd:3.0, spd:430 } },
+  boss:    { name:'病毒体·母巢', from:10, hp:4000, spd:30, w:110, h:170, dmg:40, cash:900, atk:1.6, kb:0.02, skin:'#4a7a44', eye:'#ff2020', smash:3, noHeadshot:true,
+             boss:true },
+};
+// 刷怪权重。ramp = 关卡内推进度对权重的影响（正数越往后越多，负数越往后越少）
+const ZSPAWN = {
+  normal:  { w: 10, ramp: -4.5 },
+  fast:    { w: 4.5, ramp: 0 },
+  spitter: { w: 3,   ramp: 0 },
+  heavy:   { w: 3,   ramp: 2 },
+  bomber:  { w: 2.2, ramp: 0 },
+  giant:   { w: 1,   ramp: 1.6 },
+  crawler: { w: 4,   ramp: 0 },
+  burner:  { w: 2.4, ramp: 0 },
+  leaper:  { w: 2.4, ramp: 0 },
+};
+// 某一关首次登场的新敌人（用于开场提示和关卡选择卡片）
+function newTypesAt(level) {
+  return Object.keys(ZTYPES).filter(id => ZTYPES[id].from === level);
+}
+
+// ============================== 状态 ==============================
+const G = {
+  state: 'menu', paused: false, time: 0, wave: 0,
+  spawnT: 0,
+  // 关卡推进：越过 fenceX = 本关结束（停刷）；再走到 shelfX = 开货架
+  fenceX: 0, shelfX: 0, cleared: false, shelfOpened: false,
+  banner: '', bannerT: 0, hurtT: 0, shake: 0, groanT: 3, flashT: 0,
+};
+let player, zombies, bullets, parts, coins, texts, decals, houses, arcs, items, cam, props;
+let zprojs, hazards;   // 僵尸投掷物（酸液/燃烧瓶）与落地后的地面危险区
+const stars = [];
+for (let i = 0; i < 90; i++) stars.push({ x: rand(0, VW * 2), y: rand(0, 320), s: rand(0.5, 1.8), tw: rand(0, TAU) });
+const hills = [];
+for (let x = 0; x < WORLD_W + VW; x += 130) hills.push({ x, h: rand(60, 170) });
+
+// 把 lv[等级-1] 的覆盖字段合并进 w.def —— 于是所有 w.def.xxx 的读取
+// （伤害、射速、弹速、弹丸数、弹药上限…）自动用上升级后的数值，
+// 战斗代码一行都不用改。见 WEAPONS 顶部的说明。
+function refreshWeapon(w) {
+  w.def = Object.assign({}, w.base, w.base.lv[w.lv - 1] || {});
+}
+function makeWeapon(id, lv) {
+  const w = { base: WEAPONS[id], lv: lv || 1, baseId: id, cd: 0 };
+  refreshWeapon(w);
+  // 冷兵器不耗弹；飞镖是"投掷后回收"，也不耗弹
+  w.ammo = (w.def.melee || w.def.recover) ? Infinity : (w.def.startAmmo || 60);
+  return w;
+}
+function upgradeWeapon(w) {
+  if (w.lv >= w.base.lv.length) return false;
+  w.lv++;
+  refreshWeapon(w);          // 弹药留在 w.ammo 上，不受影响
+  return true;
+}
+function curWeapon() { return player.weapons[player.slot]; }
+
+// ============================== 房屋 ==============================
+// ============================== 关卡构建 ==============================
+// 关卡 =【头段·固定】+【中段·从地图的 segs 里随机抽 4~6 个】+【尾段·固定（空街 + 栅栏 + 货架）】
+// 每张地图的 segs 组合决定了它的"地形性格"：医院是长走廊、学校是叠层、公路是天桥。
+function buildLevel(m) {
+  G.map = m;
+  houses = []; floors = []; props = []; hazards = [];
+  floors.push({ x0: 0, x1: 0, z: 0, base: true });     // 占位，最后统一铺满全图
+
+  // 头段：出生点，先来一段没有高台的平地热身
+  let x = placeSegment(SEG('head', [880, 880], 'none', 0.7, 0), 0);
+  x = placeSegment(SEG('head2', [1040, 1040], 'single', 1.0, 1, 1), x);   // 头段保底 1 栋可进房
+
+  // 中段：随机抽。forceSeg 是"保底路段" —— 保证这张图的核心地形一定会出现
+  // （比如学校主打垂直，就必须有叠层段，不能因为随机抽不到而变成一张平地图）
+  const n = irand(4, 6);
+  const order = [];
+  for (let i = 0; i < n; i++) order.push(choice(m.segs));
+  if (m.forceSeg && n > 2) order[irand(1, n - 1)] = m.forceSeg;
+  for (const sid of order) x = placeSegment(SEGMENTS[sid], x);
+
+  // 尾段：一段空街 + 栅栏，再走 1500px 到货架（这段不刷僵尸，留长一点才有"到达"的感觉）
+  x = placeSegment(SEG('tail', [760, 760], 'none', 0.5, 0), x);
+  G.fenceX = x + 40;
+  x += 1500;
+
+  // 兜底：任何"主打开阔"的地图都可能随机出一栋可进的房子都没有。
+  // 安全屋是这游戏的核心喘息点，不能看运气 —— 没有就把一栋危房改成可进的。
+  if (!houses.some(h => h.type === 'safe' && !h.dead)) {
+    const d = houses.find(h => h.type === 'deco');
+    if (d) { d.type = 'safe'; d.hp = d.maxHp = 160; }
+    else houses.push({ x: 620, w: 270, h: 215, type: 'safe', seed: Math.random(),
+                       hp: 160, maxHp: 160, refreshes: 0, refreshT: 0, hitT: 0, dead: false });
+  }
+
+  WORLD_W = Math.round(x + 320);
+  G.shelfX = WORLD_W - 260;
+  floors[0].x1 = WORLD_W;                              // 最低地面铺满全图
+  G.cleared = false; G.shelfOpened = false;
+
+  // 地图自带的永久危险区（加油站/隧道/研究所）
+  for (let i = 0; i < (m.hazards || 0); i++) {
+    hazards.push({
+      type: Math.random() < 0.6 ? 'acid' : 'fire',
+      x: rand(1500, Math.max(1800, G.fenceX - 700)),
+      z: 0, r: 54, t: 0, tick: 0, life: 99999,
+    });
+  }
+}
+function SEG(name, w, floors, props, houses, forceSafe) {
+  return { name, w, floors, props, houses, forceSafe: forceSafe || 0 };
+}
+
+// 铺一个路段，返回这一段结束时的世界 x
+function placeSegment(seg, x0) {
+  const m = G.map;
+  const w = irand(seg.w[0], seg.w[1]);
+  const wall = x0 + 40, warr = x0 + w - 40;
+  const F1 = FLOOR_H, F2 = FLOOR_H * 2;
+  const c = (wall + warr) / 2;
+
+  // ── 1) 先放房屋 ──
+  // 有高台的路段把场地一分为二：房子占左半边、高台占右半边。
+  // （之前是先放高台再放房子，结果房子每次都因为"高台不压房屋"的避让被全部跳过 ——
+  //   实测关卡 1/2/3/6/8/10 一栋房子都没有。）
+  const both = seg.houses > 0 && seg.floors !== 'none';
+  const hZone = both ? [wall, c - 30] : [wall, warr];
+  const fZone = both ? [c + 30, warr] : [wall, warr];
+  const doorPad = [];
+  for (let i = 0; i < seg.houses; i++) {
+    const hw2 = irand(230, 300);
+    const room = (hZone[1] - hZone[0]) - 120 - hw2;
+    if (room < 0 && !both) break;
+    const hx = room >= 0
+      ? hZone[0] + 60 + room * (i + 0.5) / seg.houses + rand(-35, 35)
+      : c - hw2 / 2;                                   // 实在放不下就压中线
+    // forceSafe 指定的前几栋一定是可进的（头段保证每关至少有地方躲）
+    const type = (i < (seg.forceSafe || 0)) ? 'safe' : (Math.random() < 0.78 ? 'safe' : 'deco');
+    houses.push({
+      x: hx, w: hw2, h: irand(190, 240), type, seed: Math.random(),
+      hp: type === 'safe' ? 160 : 0, maxHp: 160,
+      refreshes: 0, refreshT: 0, hitT: 0, dead: false,
+    });
+    doorPad.push(hx + hw2 / 2);
+  }
+
+  // ── 2) 再放高台（在自己的半区里，顺带避开已经放好的房子）──
+  const push = (a, b, z) => {
+    if (b - a < 180) return;
+    if (houses.some(h => b > h.x - 90 && a < h.x + h.w + 90)) return;
+    floors.push({ x0: a, x1: b, z, seed: Math.random() });
+  };
+  const [fa, fb] = fZone;
+  const fc = (fa + fb) / 2;
+  switch (seg.floors) {
+    case 'one':    { const hw = Math.min(rand(140, 240), (fb - fa) / 2 - 20); push(fc - hw, fc + hw, F1); break; }
+    case 'single': { const bw = Math.min(rand(320, 460), fb - fa); push(fc - bw / 2, fc + bw / 2, F1); break; }
+    case 'stack':  { const hw = Math.min(rand(170, 260), (fb - fa) / 2 - 20);
+                     push(fc - hw, fc + hw, F1);
+                     push(fc - hw * 0.62, fc + hw * 0.62, F2); break; }
+    case 'valley': { const gap = rand(260, 420);
+                     push(fa, fc - gap / 2, F1); push(fc + gap / 2, fb, F1); break; }
+    case 'bridge': { push(fa, fb, F1); break; }
+    case 'towers': { const tw = Math.min(rand(150, 220), (fb - fa) / 2 - 60);
+                     push(fa + 40, fa + 40 + tw, F1);
+                     push(fb - 40 - tw, fb - 40, F1); break; }
+    default: break;   // 'none'
+  }
+
+  // ── 可破坏物件：按固定节奏铺，保证弹药来源（商店不卖弹药，不能看运气）──
+  // 过滤掉拼错的 id，避免整关卡死
+  const pool   = m.props.filter(id => PROP_KINDS[id]);
+  const solids = pool.filter(id => PROP_KINDS[id].solid);
+  const deco   = pool.filter(id => !PROP_KINDS[id].solid);
+  if (solids.length) {
+    const cell = Math.max(150, Math.round(215 / seg.props));
+    let ci = 0;
+    for (let px = wall; px < warr; px += cell) {
+      if (doorPad.some(d => Math.abs(px - d) < 92)) continue;
+      const id = solids[ci++ % solids.length];
+      const d = PROP_KINDS[id];
+      props.push({ kind: id, def: d, x: px + rand(-28, 28), z: 0, w: d.w, h: d.h,
+                   hp: d.hp || 1, maxHp: d.hp || 1, hitT: 0, seed: Math.random() });
+    }
+  }
+  // ── 装饰：随机撒 ──
+  if (deco.length) {
+    for (let px = wall; px < warr; px += irand(170, 350)) {
+      if (doorPad.some(d => Math.abs(px - d) < 72)) continue;
+      const id = choice(deco);
+      const d = PROP_KINDS[id];
+      props.push({ kind: id, def: d, x: px, z: 0, w: d.w, h: d.h,
+                   hp: 1, maxHp: 1, hitT: 0, seed: Math.random() });
+    }
+  }
+  // ── 高台上也放点东西，玩家才有动力跳上去 ──
+  if (solids.length) {
+    for (const f of floors) {
+      if (f.base || f.x0 < x0 || f.x1 > x0 + w) continue;
+      const num = Math.max(1, Math.floor((f.x1 - f.x0) / 280));
+      for (let i = 0; i < num; i++) {
+        const px = f.x0 + 80 + (f.x1 - f.x0 - 160) * (i + 0.5) / num;
+        const id = choice(solids);
+        const d = PROP_KINDS[id];
+        props.push({ kind: id, def: d, x: px, z: f.z, w: d.w, h: d.h,
+                     hp: d.hp || 1, maxHp: d.hp || 1, hitT: 0, seed: Math.random() });
+      }
+    }
+  }
+  return x0 + w;
+}
+function doorOf(h) { return { x: h.x + h.w / 2, w: 52, h: 96 }; }
+
+// 高台撒点。正式的「路段系统」（固定头段 + 随机中段 + 固定尾段）会替换掉它，
+// 但先把层高、跳跃手感、绘制跑通。
+// 高台的摆放已经移进 placeSegment() —— 每个路段自带 floors 形态（none/one/stack/valley/
+// bridge/towers），不再依赖"随机撒点 + 撞到房子就让位"。之前那种写法出现过整关 0 块高台，
+// 路段化之后这个问题从结构上就不存在了。
+// ============================== 场景物件 ==============================
+// 路边的杂物。solid 的能被子弹打碎并掉落补给 —— 商店不卖弹药，这是主要来源。
+// 注意：水平弹道固定在 y=570，物件底边在 y=610，所以 h ≤ 40 的物件打不到，
+// 草/灌木/轮胎因此一律做成纯装饰（不出现在碰撞里）。
+// shape 指向 9 个绘制函数之一（plant/drum/box/slab/machine/bed/arch/sign/pod）——
+// 29 种物件靠 size + col + accent 参数化，不用写 29 段绘制代码。
+// solid 的物件 h 必须 ≥ 44：子弹固定在 y=570、物件底边在 y=610，矮于 40 会被直接飞过。
+const PROP_KINDS = {
+  // ── 纯装饰（不进碰撞）──
+  grass:  { name:'杂草',     shape:'plant',  w:38, h:22,  solid:false, col:'#4e7a3a' },
+  bush:   { name:'灌木',     shape:'plant',  w:60, h:42,  solid:false, col:'#4a7a38' },
+  corn:   { name:'玉米秆',   shape:'plant',  w:46, h:64,  solid:false, col:'#a8b03a', tall:true },
+  tire:   { name:'轮胎',     shape:'slab',   w:54, h:28,  solid:false, col:'#1e1e1e' },
+  glass:  { name:'输液架',   shape:'arch',   w:30, h:70,  solid:false, col:'#b8c8d0' },
+  neon:   { name:'霓虹招牌', shape:'sign',   w:52, h:100, solid:false, col:'#ff6ab0' },
+  hoop:   { name:'篮球架',   shape:'arch',   w:56, h:112, solid:false, col:'#8a8a92' },
+  gate:   { name:'闸机',     shape:'arch',   w:62, h:58,  solid:false, col:'#5a6068' },
+
+  // ── 可打碎 ──
+  trash:  { name:'垃圾桶',   shape:'drum',   w:38, h:56,  solid:true, hp:12, drop:'ammo',   col:'#4a5054' },
+  crate:  { name:'木箱',     shape:'box',    w:46, h:50,  solid:true, hp:16, drop:'mixed',  col:'#6b5433' },
+  barrel: { name:'油桶',     shape:'drum',   w:40, h:62,  solid:true, hp:22, drop:'cash',   col:'#8a3a26', explode:{ r:130, dmg:42 } },
+  fuelTank:{name:'油罐',     shape:'drum',   w:56, h:84,  solid:true, hp:34, drop:'cash',   col:'#b03a20', explode:{ r:190, dmg:62 } },
+  pot:    { name:'花盆',     shape:'drum',   w:34, h:46,  solid:true, hp:8,  drop:'none',   col:'#8a5a3a' },
+  tomb:   { name:'墓碑',     shape:'slab',   w:44, h:58,  solid:true, hp:20, drop:'none',   col:'#6a6a70' },
+  hay:    { name:'干草堆',   shape:'plant',  w:70, h:60,  solid:true, hp:20, drop:'mixed',  col:'#c8a848' },
+  carWreck:{name:'报废车',   shape:'machine',w:150,h:74,  solid:true, hp:60, drop:'mixed',  col:'#5a5a62' },
+  policeCar:{name:'警车',    shape:'machine',w:150,h:74,  solid:true, hp:70, drop:'ammo',   col:'#2a3a6a' },
+  barrier:{ name:'路障',     shape:'slab',   w:76, h:48,  solid:true, hp:18, drop:'none',   col:'#d05a2a' },
+  sandbag:{ name:'沙袋',     shape:'slab',   w:80, h:52,  solid:true, hp:26, drop:'none',   col:'#9a8a5a' },
+  shelf:  { name:'货架',     shape:'box',    w:88, h:96,  solid:true, hp:24, drop:'mixed',  col:'#7a6a4a' },
+  freezer:{ name:'冰柜',     shape:'machine',w:80, h:92,  solid:true, hp:30, drop:'ammo',   col:'#c8d0d4' },
+  bed:    { name:'病床',     shape:'bed',    w:112,h:56,  solid:true, hp:20, drop:'medkit', col:'#c8ccd0' },
+  bench:  { name:'长椅',     shape:'bed',    w:104,h:44,  solid:true, hp:18, drop:'none',   col:'#6a5a3a' },
+  cabinet:{ name:'药柜',     shape:'box',    w:52, h:80,  solid:true, hp:22, drop:'medkit', col:'#c0c8c4' },
+  locker: { name:'储物柜',   shape:'box',    w:54, h:88,  solid:true, hp:24, drop:'mixed',  col:'#5a6a72' },
+  desk:   { name:'课桌',     shape:'box',    w:64, h:46,  solid:true, hp:14, drop:'none',   col:'#a08a5a' },
+  ammoBox:{ name:'弹药箱',   shape:'box',    w:52, h:44,  solid:true, hp:16, drop:'ammo',   col:'#4a5a32' },
+  pod:    { name:'培养舱',   shape:'pod',    w:56, h:120, solid:true, hp:40, drop:'medkit', col:'#3a6a7a' },
+  labTable:{name:'实验台',   shape:'box',    w:92, h:56,  solid:true, hp:22, drop:'mixed',  col:'#8a9098' },
+  sample: { name:'样本柜',   shape:'box',    w:50, h:84,  solid:true, hp:24, drop:'mixed',  col:'#6a7a86' },
+};
+// 物件的摆放已经移进 placeSegment() —— 每个路段按自己地图的 props 池来铺，
+// 可打碎的按固定节奏（弹药来源不能看运气），装饰的随机撒，高台上再补一批。
+function damageProp(p, i, dmg) {
+  if (!p.def.solid) return;
+  p.hp -= dmg;
+  p.hitT = 0.1;
+  if (p.hp > 0) return;
+  breakProp(p, i);
+}
+function breakProp(p, i) {
+  props.splice(i, 1);
+  // 碎片
+  for (let k = 0; k < 12; k++) {
+    parts.push({ type: 'spark', x: p.x + rand(-p.w / 2, p.w / 2), y: GROUND - p.z - rand(0, p.h), vx: rand(-180, 180), vy: rand(-260, -40), grav: 800, life: rand(0.4, 0.8), max: 0.8, size: rand(2, 4) });
+  }
+  SFX.hit();
+  // 掉落
+  const drop = p.def.drop;
+  if (drop === 'ammo') {
+    items.push({ type:'ammo', x:p.x, y: GROUND - p.z - 16, z: p.z, t:0, life:16, cat: Math.random() < 0.62 ? 'bullet' : 'cell', amt: 14 });
+  } else if (drop === 'mixed') {
+    const r = Math.random();
+    if (r < 0.55) items.push({ type:'ammo', x:p.x, y: GROUND - p.z - 16, z:p.z, t:0, life:16, cat: Math.random()<0.62?'bullet':'cell', amt:16 });
+    else if (r < 0.85) coins.push({ x:p.x, y: GROUND - p.z - 30, vy:0, vx:0, v: irand(4, 11), t:0, life:16 });
+    else items.push({ type:'medkit', x:p.x, y: GROUND - p.z - 18, z:p.z, t:0, life:16 });
+  } else if (drop === 'cash') {
+    for (let k = 0; k < 3; k++) coins.push({ x:p.x + rand(-14,14), y: GROUND - p.z - 30, vy: rand(-160,-60), vx: rand(-60,60), v: irand(5,12), t:0, life:16 });
+  }
+  // 油桶：炸
+  if (p.def.explode) {
+    const e = p.def.explode;
+    SFX.giant(); G.shake = 16;
+    for (let k = 0; k < 40; k++) parts.push({ type:'fire', x:p.x, y: GROUND - p.z - 20, vx: rand(-420,420), vy: rand(-420,60), life: rand(0.3,0.6), max:0.6, size: rand(8,16), t:0 });
+    for (let j = zombies.length - 1; j >= 0; j--) {
+      const z = zombies[j];
+      const d = Math.hypot(z.x - p.x, z.z - p.z);
+      if (d < e.r) damageZombie(z, j, e.dmg * (1 - d / e.r * 0.5), false, (z.x > p.x ? 1 : -1) * 260);
+    }
+  }
+}
+function drawProps() {
+  const dark = 'rgba(0,0,0,0.45)';
+  for (const p of props) {
+    const sx = p.x - cam.x + VW / 2;
+    if (sx < -200 || sx > VW + 200) continue;
+    const c = p.def.col || '#6a6a70';
+    const acc = p.def.accent || c;
+    ctx.save();
+    ctx.translate(sx, GROUND - p.z);
+    if (p.hitT > 0) ctx.globalAlpha = 0.55;
+    // 地面投影（所有物件共用）
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.beginPath(); ctx.ellipse(0, 2, p.w * 0.42, 5, 0, 0, TAU); ctx.fill();
+
+    switch (p.def.shape) {
+      case 'plant': {
+        if (p.kind === 'hay') {                    // 干草堆：捆起来的草垛
+          ctx.fillStyle = c;
+          ctx.beginPath(); ctx.ellipse(0, -p.h * 0.45, p.w * 0.45, p.h * 0.42, 0, 0, TAU); ctx.fill();
+          ctx.strokeStyle = '#7a5a20'; ctx.lineWidth = 3;
+          for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(-p.w*0.35, -p.h*0.45 + k*14); ctx.lineTo(p.w*0.35, -p.h*0.55 + k*14); ctx.stroke(); }
+          ctx.fillStyle = 'rgba(255,240,180,0.25)';
+          ctx.beginPath(); ctx.ellipse(-p.w*0.14, -p.h*0.62, p.w*0.2, p.h*0.14, 0, 0, TAU); ctx.fill();
+          break;
+        }
+        const tall = p.def.tall;
+        ctx.strokeStyle = c; ctx.lineWidth = tall ? 4 : 3; ctx.lineCap = 'round';
+        const n = tall ? 4 : 5;
+        for (let i = -(n >> 1); i <= (n >> 1); i++) {
+          const bx = i * (p.w / (n + 1));
+          ctx.beginPath(); ctx.moveTo(bx, 0);
+          if (tall) { ctx.lineTo(bx + i * 3, -p.h + 6); ctx.stroke(); }
+          else { ctx.quadraticCurveTo(bx + i * 5, -p.h * 0.6, bx + i * 9, -p.h - (i === 0 ? 6 : 0)); ctx.stroke(); }
+        }
+        if (p.kind === 'bush') {                   // 灌木：几个重叠的圆
+          for (let i = 0; i < 3; i++) {
+            ctx.fillStyle = i === 1 ? '#3f6b31' : c;
+            ctx.beginPath(); ctx.arc(-p.w * 0.22 + i * p.w * 0.22, -p.h * 0.45 - (i === 1 ? 6 : 0), p.w * 0.26, 0, TAU); ctx.fill();
+          }
+        }
+        if (tall) {                                 // 玉米：叶子 + 穗
+          ctx.fillStyle = acc;
+          for (let i = -1; i <= 1; i += 2) {
+            ctx.beginPath(); ctx.ellipse(i * 12, -p.h * 0.6, 12, 5, i * 0.4, 0, TAU); ctx.fill();
+          }
+          ctx.fillStyle = '#e8d060';
+          ctx.beginPath(); ctx.ellipse(0, -p.h * 0.82, 6, 14, 0, 0, TAU); ctx.fill();
+        }
+        break;
+      }
+      case 'drum': {
+        ctx.fillStyle = c;
+        ctx.beginPath();
+        ctx.moveTo(-p.w / 2, -p.h); ctx.lineTo(p.w / 2, -p.h);
+        ctx.lineTo(p.w / 2 - 4, 0); ctx.lineTo(-p.w / 2 + 4, 0);
+        ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.13)';
+        ctx.fillRect(-p.w / 2 + 4, -p.h + 5, 6, p.h - 10);
+        ctx.fillStyle = acc;
+        ctx.fillRect(-p.w / 2 - 3, -p.h - 7, p.w + 6, 8);
+        ctx.strokeStyle = dark; ctx.lineWidth = 2.5;
+        ctx.strokeRect(-p.w / 2 - 3, -p.h - 7, p.w + 6, 8);
+        if (p.def.explode) {
+          ctx.fillStyle = '#e8c559'; ctx.font = 'bold 16px sans-serif'; ctx.textAlign = 'center';
+          ctx.fillText('!', 0, -p.h * 0.45);
+        }
+        break;
+      }
+      case 'box': {
+        ctx.fillStyle = c; ctx.fillRect(-p.w / 2, -p.h, p.w, p.h);
+        ctx.strokeStyle = dark; ctx.lineWidth = 3;
+        ctx.strokeRect(-p.w / 2 + 1.5, -p.h + 1.5, p.w - 3, p.h - 3);
+        ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-p.w / 2, -p.h); ctx.lineTo(p.w / 2, 0);
+        ctx.moveTo(p.w / 2, -p.h); ctx.lineTo(-p.w / 2, 0);
+        ctx.stroke();
+        if (p.def.drop === 'medkit') {              // 药柜：白十字
+          ctx.fillStyle = '#e05a5a';
+          ctx.fillRect(-3, -p.h * 0.62, 6, 22); ctx.fillRect(-11, -p.h * 0.62 + 8, 22, 6);
+        }
+        break;
+      }
+      case 'slab': {
+        ctx.fillStyle = c;
+        if (p.kind === 'tire') {
+          ctx.beginPath(); ctx.ellipse(0, -p.h / 2, p.w / 2, p.h / 2, 0, 0, TAU); ctx.fill();
+          ctx.strokeStyle = dark; ctx.lineWidth = 3; ctx.stroke();
+          ctx.fillStyle = 'rgba(0,0,0,0.6)';
+          ctx.beginPath(); ctx.ellipse(0, -p.h / 2, p.w / 2 - 7, p.h / 2 - 6, 0, 0, TAU); ctx.fill();
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(-p.w / 2, 0); ctx.lineTo(-p.w / 2 + 5, -p.h);
+          ctx.lineTo(p.w / 2 - 5, -p.h); ctx.lineTo(p.w / 2, 0);
+          ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = dark; ctx.lineWidth = 3; ctx.stroke();
+          if (p.kind === 'barrier') { ctx.fillStyle = '#f0e8d8'; for (let k = -1; k <= 1; k++) ctx.fillRect(k * 24 - 6, -p.h + 7, 12, p.h - 15); }
+          if (p.kind === 'sandbag') { ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 2; for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(k * 26, 0); ctx.lineTo(k * 26, -p.h); ctx.stroke(); } }
+          if (p.kind === 'tomb') { ctx.fillStyle = 'rgba(255,255,255,0.13)'; ctx.fillRect(-p.w*0.3, -p.h*0.7, p.w*0.2, 14); }
+        }
+        break;
+      }
+      case 'machine': {
+        const bh = p.h * 0.72, by = -p.h;
+        ctx.fillStyle = c; ctx.fillRect(-p.w / 2, by, p.w, bh);
+        ctx.strokeStyle = dark; ctx.lineWidth = 3;
+        ctx.strokeRect(-p.w / 2 + 1.5, by + 1.5, p.w - 3, bh - 3);
+        ctx.fillStyle = 'rgba(150,200,230,0.5)';
+        ctx.fillRect(-p.w / 2 + 14, by + 12, p.w * 0.36, bh * 0.42);
+        ctx.fillStyle = '#17171a';
+        ctx.beginPath(); ctx.arc(-p.w * 0.28, -p.h * 0.14, 15, 0, TAU); ctx.fill();
+        ctx.beginPath(); ctx.arc(p.w * 0.28, -p.h * 0.14, 15, 0, TAU); ctx.fill();
+        if (p.kind === 'policeCar') {
+          const s = Math.floor(G.time * 4) % 2;
+          ctx.fillStyle = s ? '#c0392b' : '#4a90d0';
+          ctx.fillRect(-32, by - 12, 26, 12);
+          ctx.fillStyle = s ? '#4a90d0' : '#c0392b';
+          ctx.fillRect(6, by - 12, 26, 12);
+        }
+        break;
+      }
+      case 'bed': {
+        ctx.fillStyle = c; ctx.fillRect(-p.w / 2, -p.h * 0.62, p.w, p.h * 0.3);
+        ctx.strokeStyle = dark; ctx.lineWidth = 3;
+        ctx.strokeRect(-p.w / 2 + 1.5, -p.h * 0.62 + 1.5, p.w - 3, p.h * 0.3 - 3);
+        ctx.strokeStyle = '#8a9098'; ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(-p.w / 2 + 9, -p.h * 0.32); ctx.lineTo(-p.w / 2 + 9, 0);
+        ctx.moveTo(p.w / 2 - 9, -p.h * 0.32); ctx.lineTo(p.w / 2 - 9, 0);
+        ctx.stroke();
+        if (p.kind === 'bed') { ctx.fillStyle = '#eef2f6'; ctx.fillRect(-p.w / 2 + 6, -p.h * 0.66, p.w * 0.3, p.h * 0.2); }
+        break;
+      }
+      case 'arch': {
+        ctx.strokeStyle = c; ctx.lineWidth = 7; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -p.h); ctx.lineTo(p.w * 0.5, -p.h); ctx.stroke();
+        if (p.kind === 'hoop') {
+          ctx.strokeStyle = '#e8a030'; ctx.lineWidth = 4;
+          ctx.beginPath(); ctx.arc(p.w * 0.42, -p.h + 15, 12, 0, TAU); ctx.stroke();
+        }
+        if (p.kind === 'gate') { ctx.fillStyle = c; ctx.fillRect(p.w * 0.28, -p.h, 16, p.h); }
+        if (p.kind === 'glass') { ctx.fillStyle = 'rgba(200,240,255,0.4)'; ctx.fillRect(-6, -p.h * 0.7, 12, 16); }
+        break;
+      }
+      case 'sign': {
+        ctx.fillStyle = '#3a3a40'; ctx.fillRect(-3, -p.h, 6, p.h);
+        const glow = 0.65 + 0.35 * Math.sin(G.time * 5 + p.seed * 6);
+        ctx.globalAlpha *= glow;
+        ctx.fillStyle = c; ctx.fillRect(-p.w / 2, -p.h, p.w, 34);
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+        ctx.strokeRect(-p.w / 2 + 1, -p.h + 1, p.w - 2, 32);
+        ctx.globalAlpha = 1;
+        break;
+      }
+      case 'pod': {
+        ctx.fillStyle = '#2a3038'; ctx.fillRect(-p.w / 2, -12, p.w, 12);
+        ctx.fillStyle = 'rgba(120,220,240,0.28)'; ctx.fillRect(-p.w / 2 + 4, -p.h + 8, p.w - 8, p.h - 22);
+        ctx.strokeStyle = '#8ad0e0'; ctx.lineWidth = 3;
+        ctx.strokeRect(-p.w / 2 + 4, -p.h + 8, p.w - 8, p.h - 22);
+        const bob = Math.sin(G.time * 1.6 + p.seed * 9) * 8;
+        ctx.fillStyle = 'rgba(150,240,255,0.45)';
+        ctx.beginPath(); ctx.ellipse(0, -p.h * 0.55 + bob, 13, 20, 0, 0, TAU); ctx.fill();
+        ctx.fillStyle = '#5a6068'; ctx.fillRect(-p.w / 2, -p.h, p.w, 10);
+        break;
+      }
+    }
+    ctx.restore();
+  }
+}
+
+// ============================== 投掷物 / 地面危险区（绘制） ==============================
+function drawHazards() {
+  for (const hz of hazards) {
+    const sx = hz.x - cam.x + VW / 2;
+    if (sx < -140 || sx > VW + 140) continue;
+    const fade = clamp(hz.life / 1.2, 0, 1);
+    const wob = Math.sin(hz.t * 6) * 3;
+    if (hz.type === 'fire') {
+      ctx.globalAlpha = fade;
+      for (let k = 0; k < 7; k++) {
+        const bx = sx - hz.r * 0.7 + k * hz.r * 0.23 + Math.sin(hz.t * 7 + k) * 4;
+        const bh = 22 + Math.sin(hz.t * 9 + k * 1.7) * 10;
+        ctx.fillStyle = k % 2 ? 'rgba(255,150,40,0.75)' : 'rgba(255,90,20,0.6)';
+        ctx.beginPath();
+        ctx.moveTo(bx - 9, GROUND);
+        ctx.quadraticCurveTo(bx - 4, GROUND - bh * 0.6, bx, GROUND - bh);
+        ctx.quadraticCurveTo(bx + 4, GROUND - bh * 0.6, bx + 9, GROUND);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.globalAlpha = fade * 0.85;
+      ctx.fillStyle = '#6aa02a';
+      ctx.beginPath(); ctx.ellipse(sx, GROUND + 3, hz.r + wob, 11, 0, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#9ad84a';
+      ctx.beginPath(); ctx.ellipse(sx, GROUND + 1, hz.r * 0.6 + wob * 0.5, 6, 0, 0, TAU); ctx.fill();
+      for (let k = 0; k < 3; k++) {     // 冒泡
+        const bt = (hz.t * 1.6 + k * 0.33) % 1;
+        ctx.globalAlpha = fade * (1 - bt) * 0.7;
+        ctx.beginPath(); ctx.arc(sx - hz.r * 0.5 + k * hz.r * 0.5, GROUND - bt * 16, 3 + bt * 3, 0, TAU); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+function drawZProj() {
+  for (const q of zprojs) {
+    const sx = q.x - cam.x + VW / 2;
+    if (sx < -60 || sx > VW + 60) continue;
+    if (q.elem === 'fire') {
+      const fl = 1 + Math.sin(G.time * 18 + q.spin) * 0.35;
+      ctx.fillStyle = 'rgba(255,160,50,0.7)';
+      ctx.beginPath(); ctx.arc(sx, q.y - 8, 8 * fl, 0, TAU); ctx.fill();
+      ctx.save(); ctx.translate(sx, q.y); ctx.rotate(q.spin);
+      ctx.fillStyle = '#6a4a20'; ctx.fillRect(-6, -9, 12, 18);
+      ctx.restore();
+    } else {
+      ctx.strokeStyle = 'rgba(140,220,60,0.35)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(sx - q.vx * 0.045, q.y - q.vy * 0.045); ctx.lineTo(sx, q.y); ctx.stroke();
+      ctx.fillStyle = '#8fc03a';
+      ctx.beginPath(); ctx.arc(sx, q.y, 8, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(190,255,110,0.6)';
+      ctx.beginPath(); ctx.arc(sx - 2, q.y - 2, 4, 0, TAU); ctx.fill();
+    }
+  }
+}
+
+// ============================== 关卡末尾：栅栏 + 货架 ==============================
+// 越过栅栏 = 本关结束（停刷僵尸）；再走一段就是武器货架（关卡结算商店）。
+function drawFence() {
+  const sx = G.fenceX - cam.x + VW / 2;
+  if (sx < -240 || sx > VW + 400) return;
+  const H = 156, top = GROUND - H;
+  // 立柱
+  ctx.fillStyle = '#4a3a24';
+  for (let i = 0; i < 4; i++) ctx.fillRect(sx + i * 88 - 7, top, 14, H);
+  // 横杆
+  ctx.fillStyle = '#5e4a2e';
+  ctx.fillRect(sx - 14, top + 20, 282, 14);
+  ctx.fillRect(sx - 14, top + H - 54, 282, 14);
+  // 铁丝网
+  ctx.strokeStyle = 'rgba(180,190,200,0.26)'; ctx.lineWidth = 1.5;
+  for (let i = 0; i < 19; i++) {
+    const x = sx - 14 + i * 15;
+    ctx.beginPath(); ctx.moveTo(x, top + 34); ctx.lineTo(x + 20, top + H - 40); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + 20, top + 34); ctx.lineTo(x, top + H - 40); ctx.stroke();
+  }
+  // 牌子
+  ctx.fillStyle = G.cleared ? '#7ad08a' : '#c8a24a';
+  ctx.fillRect(sx + 36, top - 46, 182, 38);
+  ctx.strokeStyle = '#2a1e0a'; ctx.lineWidth = 3;
+  ctx.strokeRect(sx + 36, top - 46, 182, 38);
+  ctx.fillStyle = '#2a1e0a';
+  ctx.font = 'bold 18px "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('安 全 区', sx + 127, top - 20);
+}
+function drawShelf() {
+  const sx = G.shelfX - cam.x + VW / 2;
+  if (sx < -280 || sx > VW + 280) return;
+  const W = 160, H = 134, top = GROUND - H;
+  // 顶棚
+  ctx.fillStyle = '#3a2c1c';
+  ctx.fillRect(sx - W / 2 - 14, top - 18, W + 28, 18);
+  // 架体
+  ctx.fillStyle = '#5a4630';
+  ctx.fillRect(sx - W / 2, top, W, H);
+  ctx.strokeStyle = '#2e2418'; ctx.lineWidth = 4;
+  ctx.strokeRect(sx - W / 2 + 2, top + 2, W - 4, H - 2);
+  // 三层隔板 + 枪的剪影
+  for (let r = 0; r < 3; r++) {
+    const ry = top + 14 + r * 40;
+    ctx.fillStyle = '#6e5638';
+    ctx.fillRect(sx - W / 2 + 8, ry + 26, W - 16, 7);
+    ctx.fillStyle = '#1e1e24';
+    for (let k = 0; k < 3; k++) {
+      const gx = sx - W / 2 + 24 + k * 40;
+      const gh = 12 + ((k * 7 + r * 5) % 10);
+      ctx.fillRect(gx, ry + 26 - gh, 30, 5);
+      ctx.fillRect(gx + 6, ry + 26 - gh + 5, 8, 6);
+    }
+  }
+  // 招牌
+  ctx.fillStyle = '#e8c559';
+  ctx.font = 'bold 20px "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('武 器 货 架', sx, top - 32);
+  if (!G.shelfOpened) {
+    const pulse = 0.5 + 0.5 * Math.sin(G.time * 4);
+    ctx.fillStyle = `rgba(232,197,89,${0.10 + pulse * 0.10})`;
+    ctx.beginPath(); ctx.arc(sx, GROUND - 46, 112, 0, TAU); ctx.fill();
+  }
+}
+
+// 画成「悬空木板」而不是土坡 —— 因为僵尸是在最底层地面(z=0)走的，会从板子下面穿过去。
+// 土坡造型会让僵尸看起来像穿模，悬空板就自然了。
+function drawFloors() {
+  const TH = 26;
+  for (const f of floors) {
+    if (f.base) continue;
+    const x0 = f.x0 - cam.x + VW / 2, x1 = f.x1 - cam.x + VW / 2;
+    if (x1 < -80 || x0 > VW + 80) continue;
+    const ty = GROUND - f.z, w = x1 - x0;
+    // 地面投影
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.beginPath(); ctx.ellipse((x0 + x1) / 2, GROUND + 4, w * 0.42, 9, 0, 0, TAU); ctx.fill();
+    // 支撑柱
+    ctx.fillStyle = '#2e2418';
+    for (let i = 30; i < w - 30; i += 132) ctx.fillRect(x0 + i, ty + TH, 12, 48);
+    // 板身
+    ctx.fillStyle = '#4a3c2a';
+    ctx.fillRect(x0, ty, w, TH);
+    ctx.fillStyle = '#5c4b33';
+    ctx.fillRect(x0, ty, w, 10);
+    ctx.strokeStyle = '#241c12'; ctx.lineWidth = 3;
+    ctx.strokeRect(x0 + 1.5, ty + 1.5, w - 3, TH - 3);
+    // 顶面木纹
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    for (let i = 10; i < w - 16; i += 40) ctx.fillRect(x0 + i, ty + 3, 22, 3);
+  }
+}
+
+// ============================== 生成僵尸 ==============================
+function spawnZombie(type) {
+  const t = ZTYPES[type];
+  const side = Math.random() < 0.5 ? -1 : 1;
+  let x = player.x + side * (VW / 2 + rand(60, 200));
+  if (x < 60) x = player.x + VW / 2 + rand(60, 200);
+  if (x > WORLD_W - 60) x = player.x - VW / 2 - rand(60, 200);
+  x = clamp(x, 60, WORLD_W - 60);
+  const hpScale = 1 + (G.wave - 1) * 0.13;
+  // 上层路段上也会有僵尸 —— 该位置有高台时，45% 概率直接刷在上面。
+  // 高台上的僵尸会照常朝玩家走，走到边缘就掉下来，形成"从天而降"的压迫感。
+  const topF = floorAt(x, 1e9) || floors[0];
+  const zf = (topF.z > 0 && Math.random() < 0.45) ? topF : floors[0];
+  const z = {
+    type, def: t, x, z: zf.z, vz: 0, onGround: true, floor: zf, w: t.w, h: t.h,
+    hp: t.hp * hpScale, maxHp: t.hp * hpScale,
+    spd: t.spd * rand(0.9, 1.1) * (1 + (G.wave - 1) * 0.015),
+    dir: -side, walkT: rand(0, TAU), atkT: rand(0.3, 1), hitT: 0, burn: 0, burnT: 0,
+    vy: 0, wob: rand(0, TAU),
+    boredT: 0, poundLeft: undefined,   // 砸屋状态：砸够了就去游走（见 updateZombies）
+    fuse: 0, shootT: undefined, pounceT: undefined, lungeT: 0, lungeDir: 1,   // 各类型的特殊行为
+  };
+  z.y = () => GROUND - z.z;
+  zombies.push(z);
+}
+// —— 刷怪：不再是"波次"，改成按推进距离收紧难度 ——
+// 越往前走刷得越快、同屏越多、重甲和巨型越早出现。越过栅栏后彻底停刷。
+// 从「本关已解锁」的类型里按权重抽。看不到的类型根本不会出现 ——
+// 第 1 关只有村民僵尸，之后每关逐步解锁新敌人。
+function pickZombieType(p, level) {
+  const pool = [];
+  let total = 0;
+  for (const id in ZSPAWN) {
+    if (ZTYPES[id].from > level) continue;
+    const s = ZSPAWN[id];
+    const w = Math.max(0.5, s.w + s.ramp * p);
+    pool.push([id, w]);
+    total += w;
+  }
+  if (!pool.length) return 'normal';
+  let r = Math.random() * total;
+  for (const [id, w] of pool) { r -= w; if (r <= 0) return id; }
+  return pool[pool.length - 1][0];
+}
+function updateSpawner(dt) {
+  if (G.noWave || G.cleared || G.state !== 'play') return;
+  const p = clamp(player.x / G.fenceX, 0, 1);       // 0 = 起点，1 = 栅栏
+  G.spawnT -= dt;
+  if (G.spawnT > 0) return;
+  G.spawnT = lerp(1.55, 0.42, p) * rand(0.75, 1.25);
+  if (zombies.length >= Math.round(lerp(10, 26, p))) return;
+  spawnZombie(pickZombieType(p, G.wave));
+}
+// —— 推进：越过栅栏 = 本关结束（停刷、僵尸散开），再往前走到货架 ——
+function updateProgress(dt) {
+  if (!G.cleared && player.x >= G.fenceX) {
+    G.cleared = true;
+    G.banner = '已抵达安全区 · 不再有僵尸'; G.bannerT = 3;
+    SFX.clear(); SFX.wave();
+    for (const z of zombies) z.boredT = 999;        // 让场上的僵尸全部散开
+  }
+  if (G.cleared && !G.shelfOpened && player.x >= G.shelfX - 70) {
+    G.shelfOpened = true;
+    openShelf();
+  }
+}
+// 兼容旧测试的入口：只重置刷怪计时并切回游戏中
+function startWave(n) {
+  G.wave = n;
+  G.spawnT = 0.6;
+  G.state = 'play';
+  hide('menu'); hide('shelf'); hide('result'); hide('pause'); hide('levels');
+  G.banner = '第 ' + n + ' 关 · 走到街道尽头的栅栏'; G.bannerT = 2.6;
+  SFX.wave();
+}
+
+// ============================== 战斗 ==============================
+function attack() {
+  const w = curWeapon();
+  if (w.cd > 0) return;
+  if (w.def.melee) { meleeSwing(w); return; }
+  if (w.ammo <= 0) { SFX.deny(); return; }
+  w.cd = w.def.rate;
+  w.ammo -= w.def.flame ? 0.22 : 1;
+  const a = player.aim;
+  if (w.def.flame) {
+    SFX.flame();
+    for (let i = 0; i < 3; i++) {
+      const ang = a + rand(-0.14, 0.14);
+      parts.push({
+        type: 'fire', x: player.x + Math.cos(a) * 34, y: GROUND - player.h + 34 - player.z + Math.sin(a) * 34,
+        vx: Math.cos(ang) * rand(320, 460), vy: Math.sin(ang) * rand(320, 460) - 30,
+        life: rand(0.35, 0.55), max: 0.55, size: rand(7, 13), t: 0,
+      });
+    }
+    G.shake = Math.min(G.shake + 0.6, 4);
+    return;
+  }
+  if (w.def.chain) {
+    SFX.lightning();
+    fireLightning(w);
+    return;
+  }
+  (SFX[w.def.sfx] || SFX.pistol)();
+  const muzzleX = player.x + Math.cos(a) * 36, muzzleY = GUN_Y - player.z;
+  const elev = Math.max(0, player.z);              // 比最低地面高出多少
+  for (let i = 0; i < (w.def.pellets || 1); i++) {
+    const ang = a + rand(-w.def.spread, w.def.spread);
+    const sp = w.def.spd * rand(0.94, 1.06);
+    const vx = Math.cos(ang) * sp;
+    bullets.push({
+      x: muzzleX, y: muzzleY, vx,
+      // 纯水平弹道、不受重力（若保留 sin(ang) 的垂直分量，spread 会让弹道漂移十几像素）。
+      // 但从高处（高台 / 空中）开枪时，让弹道在 FALL_DIST 内斜向下压回 GUN_Y 再恢复水平 ——
+      // 否则站在高台上会从所有地面僵尸的头顶飞过去，高台就变成废物了。
+      vy: elev > 0 ? elev / FALL_DIST * Math.abs(vx) : 0,
+      grav: 0, dmg: w.def.dmg, life: 1.2,
+      air: !player.onGround,   // 开枪时人在空中（跳起或下落）→ 这一发算打头
+      noArmor: !!w.def.noArmor,// 破甲武器无视重甲尸的正面减伤
+    });
+  }
+  G.flashT = 0.06;
+  G.shake = Math.min(G.shake + (w.def.id === 'shotgun' ? 6 : 2.2), 12);
+  const sa = a + Math.PI / 2;
+  parts.push({ type: 'shell', x: player.x, y: muzzleY, vx: Math.cos(sa) * rand(50, 110), vy: -rand(150, 260), grav: 900, life: 0.8, max: 0.8, size: 3 });
+}
+function meleeSwing(w) {
+  w.cd = w.def.rate;
+  player.swingT = 0.22;
+  SFX.swing();
+  const dir = Math.cos(player.aim) >= 0 ? 1 : -1;
+  let hitAny = false;
+  for (let i = zombies.length - 1; i >= 0; i--) {
+    const z = zombies[i];
+    const dx = z.x - player.x;
+    if (dx * dir > 0 && Math.abs(dx) < 80 + z.w / 2 && Math.abs(z.z - player.z) < 70) {
+      hitAny = true;
+      damageZombie(z, i, w.def.dmg, false, dir * 300, w.def.noArmor);
+    }
+  }
+  for (let i = props.length - 1; i >= 0; i--) {
+    const p = props[i];
+    const dx = p.x - player.x;
+    if (dx * dir > 0 && Math.abs(dx) < 80 + p.w / 2 && Math.abs(p.z - player.z) < 70) {
+      hitAny = true;
+      damageProp(p, i, w.def.dmg);
+    }
+  }
+  if (hitAny) SFX.melee();
+}
+function fireLightning(w) {
+  const a = player.aim;
+  const sx = player.x + Math.cos(a) * 30, sy = GROUND - player.h + 34 - player.z + Math.sin(a) * 30;
+  const cands = [];
+  for (const z of zombies) {
+    const dx = z.x - player.x;
+    if (dx * Math.cos(a) < -30) continue;
+    const d = Math.hypot(dx, (z.y() - sy) * 0.6);
+    if (d < 620) cands.push({ z, d });
+  }
+  cands.sort((p, q) => p.d - q.d);
+  const targets = cands.slice(0, 4).map(c => c.z);
+  if (targets.length === 0) { G.shake = Math.min(G.shake + 2, 8); return; }
+  let px = sx, py = sy;
+  const pts = [[px, py]];
+  const hitSet = [];
+  for (const z of targets) {
+    pts.push([z.x, z.y() - z.h / 2]);
+    hitSet.push(z);
+    px = z.x; py = z.y() - z.h / 2;
+  }
+  arcs.push({ pts, life: 0.18, max: 0.18 });
+  for (let i = zombies.length - 1; i >= 0; i--) {
+    if (hitSet.includes(zombies[i])) damageZombie(zombies[i], i, w.def.dmg, false, (zombies[i].x > player.x ? 1 : -1) * 140);
+  }
+  G.shake = Math.min(G.shake + 5, 12);
+}
+// ============================== 僵尸投掷物 / 地面危险区 ==============================
+// 酸液喷吐者、燃烧者用抛物线把东西扔过来；落地后留下一片持续伤害的地面区域。
+// 地面危险区是跳跃除爆头之外的另一个用途 —— 跳过去就没事。
+const PROJ_GRAV = 900;
+function throwAt(z, tx, ty, rg) {
+  const sx = z.x + z.dir * 22, sy = z.y() - z.h * 0.78;
+  const dx = tx - sx;
+  const T = Math.max(0.4, Math.abs(dx) / rg.spd);          // 飞行时间
+  zprojs.push({
+    elem: rg.elem, x: sx, y: sy, t: 0, dmg: rg.dmg, spin: rand(0, TAU),
+    vx: dx / T,
+    vy: (ty - sy) / T - 0.5 * PROJ_GRAV * T,               // 抵消重力，T 秒后正好落到目标高度
+  });
+  SFX.spit();
+}
+function spillHazard(q) {
+  hazards.push({
+    type: q.elem === 'fire' ? 'fire' : 'acid',
+    x: q.x, z: 0, r: 54, t: 0, tick: 0,
+    life: q.elem === 'fire' ? 4.5 : 6.5,
+  });
+  for (let k = 0; k < 10; k++) {
+    parts.push({
+      type: q.elem === 'fire' ? 'fire' : 'spark',
+      x: q.x + rand(-14, 14), y: GROUND - rand(0, 10),
+      vx: rand(-90, 90), vy: rand(-160, -30),
+      grav: q.elem === 'fire' ? 0 : 700,
+      life: rand(0.3, 0.7), max: 0.7, size: rand(3, 8), t: 0,
+    });
+  }
+  SFX.land();
+}
+function updateZProj(dt) {
+  for (let i = zprojs.length - 1; i >= 0; i--) {
+    const q = zprojs[i];
+    q.t += dt;
+    q.x += q.vx * dt; q.y += q.vy * dt;
+    q.vy += PROJ_GRAV * dt;
+    q.spin += dt * 9;
+    if (q.t > 7 || q.x < 20 || q.x > WORLD_W - 20) { zprojs.splice(i, 1); continue; }
+    const py = GROUND - player.z - 44;
+    if (!player.inside && Math.abs(q.x - player.x) < 26 && Math.abs(q.y - py) < 52) {
+      hurtPlayer(q.dmg, q.vx > 0 ? 110 : -110);
+      spillHazard(q);
+      zprojs.splice(i, 1);
+      continue;
+    }
+    if (q.y >= GROUND - 4) { spillHazard(q); zprojs.splice(i, 1); }
+  }
+  // 地面危险区：每 0.45 秒结算一次伤害（不能用每帧伤害，hurtPlayer 会被反复触发）
+  for (let i = hazards.length - 1; i >= 0; i--) {
+    const hz = hazards[i];
+    hz.life -= dt; hz.tick -= dt; hz.t += dt;
+    if (hz.life <= 0) { hazards.splice(i, 1); continue; }
+    if (hz.tick <= 0 && !player.inside &&
+        Math.abs(player.x - hz.x) < hz.r * 0.85 && Math.abs(player.z - hz.z) < 44) {
+      hz.tick = 0.45;
+      hurtPlayer(hz.type === 'fire' ? 7 : 6, 0);
+    }
+  }
+}
+// 自爆尸
+function explodeZombie(z, i) {
+  const e = z.def.explode;
+  zombies.splice(i, 1);
+  SFX.boom();
+  G.shake = Math.min(G.shake + 18, 22);
+  for (let k = 0; k < 34; k++) {
+    parts.push({ type: 'fire', x: z.x + rand(-10, 10), y: z.y() - rand(0, z.h), vx: rand(-360, 360), vy: rand(-380, 60), life: rand(0.25, 0.55), max: 0.55, size: rand(7, 14), t: 0 });
+  }
+  for (let k = 0; k < 20; k++) {
+    parts.push({ type: 'blood', x: z.x, y: z.y() - rand(0, z.h), vx: rand(-260, 260), vy: rand(-320, -40), grav: 800, life: rand(0.4, 0.9), max: 0.9, size: rand(2, 5) });
+  }
+  decals.push({ x: z.x, r: 34 });
+  const d = Math.hypot(player.x - z.x, (player.z - z.z) * 0.7);
+  if (d < e.r && !player.inside) hurtPlayer(e.dmg * (1 - d / e.r * 0.5), (player.x > z.x ? 1 : -1) * 240);
+  for (let j = zombies.length - 1; j >= 0; j--) {
+    const o = zombies[j];
+    if (Math.hypot(o.x - z.x, o.z - z.z) < e.r) damageZombie(o, j, e.dmg * 0.6, false, (o.x > z.x ? 1 : -1) * 200);
+  }
+  for (let j = props.length - 1; j >= 0; j--) {
+    const p = props[j];
+    if (p.def.solid && Math.hypot(p.x - z.x, p.z - z.z) < e.r) damageProp(p, j, e.dmg);
+  }
+}
+function damageZombie(z, i, dmg, headshot, kb, noArmor, isBullet) {
+  // 重甲尸：正面弹开子弹。跳射爆头、或者带 noArmor 的破甲武器（消防斧/特斯拉/等离子）才打得进去。
+  // 近战、火焰、爆炸不算"正面飞来的子弹"，照常结算 —— 所以就算只有木棍也不是完全打不动。
+  if (z.def.armor && isBullet && !headshot && !noArmor) {
+    z.hitT = 0.06;
+    texts.push({ x: z.x, y: z.y() - z.h - 14, txt: '铛! 弹开了', col: '#b8c0c8', life: 0.55, max: 0.55, vy: -50 });
+    for (let k = 0; k < 4; k++) {
+      parts.push({ type: 'spark', x: z.x + rand(-9, 9), y: z.y() - z.h * 0.6, vx: rand(50, 190) * (kb >= 0 ? -1 : 1), vy: rand(-150, -20), grav: 700, life: 0.25, max: 0.25, size: 2.2 });
+    }
+    SFX.hit();
+    return;
+  }
+  const d = headshot ? dmg * 2 : dmg;
+  z.hp -= d;
+  z.hitT = 0.09;
+  z.vy = (z.vy || 0) + (kb ? kb * 0.4 * z.def.kb : 0);
+  texts.push({ x: z.x, y: z.y() - z.h - 14, txt: headshot ? '爆头! -' + Math.round(d) : '-' + Math.round(d), col: headshot ? '#ffcc40' : '#ff8878', life: 0.7, max: 0.7, vy: -60 });
+  const by = z.y() - z.h * 0.7;
+  for (let p = 0; p < (headshot ? 10 : 5); p++) {
+    parts.push({ type: 'blood', x: z.x + rand(-8, 8), y: by + rand(-10, 10), vx: rand(-140, 140) + (kb ? kb * 0.3 : 0), vy: rand(-220, -40), grav: 800, life: rand(0.4, 0.9), max: 0.9, size: rand(2, 4.5) });
+  }
+  SFX.hit();
+  if (headshot) SFX.head();
+  if (z.hp <= 0) killZombie(z, i, headshot);
+}
+function killZombie(z, i, headshot) {
+  zombies.splice(i, 1);
+  player.kills++;
+  const n = z.type === 'giant' ? 14 : (z.type === 'heavy' ? 6 : 3);
+  for (let c = 0; c < n; c++) {
+    coins.push({ x: z.x + rand(-14, 14), y: z.y() - z.h * 0.5, vy: rand(-320, -120), vx: rand(-90, 90), v: Math.max(1, Math.round(z.def.cash / n)), t: 0, life: 14 });
+  }
+  for (let p = 0; p < (z.type === 'giant' ? 40 : 16); p++) {
+    parts.push({ type: 'blood', x: z.x + rand(-12, 12), y: z.y() - z.h * rand(0.3, 0.9), vx: rand(-260, 260), vy: rand(-380, -60), grav: 800, life: rand(0.5, 1.1), max: 1.1, size: rand(2.5, 6) });
+  }
+  if (headshot) {
+    parts.push({ type: 'head', x: z.x, y: z.y() - z.h + 12, vx: rand(-120, 120), vy: -420, grav: 900, life: 1.4, max: 1.4, size: z.w * 0.28, skin: z.def.skin, eye: z.def.eye });
+  }
+  parts.push({ type: 'corpse', x: z.x, y: z.y(), vx: rand(-40, 40), vy: 0, grav: 0, life: 1.3, max: 1.3, zt: z.type, dir: z.dir, w: z.w, h: z.h, skin: z.def.skin });
+  decals.push({ x: z.x, r: z.type === 'giant' ? 46 : 22 + rand(0, 12) });
+  if (decals.length > 260) decals.shift();
+  SFX.die();
+  if (Math.random() < 0.045) items.push({ type: 'bat', x: z.x, y: GROUND - 40 - rand(0, 40), t: 0, life: 18 });
+  if (Math.random() < 0.05) items.push({ type: 'medkit', x: z.x, y: GROUND - 18, t: 0, life: 18 });
+}
+function hurtPlayer(dmg, kb) {
+  if (G.state !== 'play' || player.invuln > 0) return;
+  player.hp -= dmg;
+  player.vx += kb || 0;
+  G.hurtT = 0.4;
+  G.shake = Math.min(G.shake + 7, 14);
+  SFX.hurt();
+  if (player.hp <= 0) {
+    player.hp = 0;
+    if (player.bats > 0) {
+      player.bats--;
+      player.hp = 60;
+      player.invuln = 2.5;
+      G.banner = '蝙蝠救了你!';
+      G.bannerT = 2;
+      SFX.revive();
+      for (const z of zombies) {
+        z.vy = (z.x > player.x ? 1 : -1) * 420 * z.def.kb;
+        z.atkT = 1.2;
+      }
+    } else loseLevel();
+  }
+}
+
+// ============================== 门 ==============================
+// E 键：货架 / 同伴 / 空投箱等交互（后续步骤接入）
+function interact() { }
+
+// —— 进屋 / 出屋：都在门口或屋内按跳跃键触发（见 updatePlayer），不用单独的键 ——
+function enterHouse(h) {
+  player.inside = h;
+  player.x = doorOf(h).x;
+  player.z = 0; player.vz = 0; player.onGround = true;
+  h.refreshT = 0;                       // 进屋立刻刷第一批物资
+  SFX.door();
+  G.banner = '安全屋 · 再跳一下出去'; G.bannerT = 1.6;
+}
+function exitHouse() {
+  const h = player.inside;
+  if (!h) return;
+  player.inside = null;
+  player.x = doorOf(h).x;
+  SFX.door();
+}
+// 僵尸砸屋：房屋逐渐受损，砸塌了玩家会被弹出去并受伤
+function damageHouse(h, dmg) {
+  if (!h || h.type !== 'safe' || h.dead) return;
+  h.hp -= dmg;
+  h.hitT = 0.14;
+  if (h.hp > 0) return;
+  h.hp = 0; h.dead = true;
+  SFX.breakIn();
+  G.shake = 20;
+  for (let i = 0; i < 46; i++) {
+    parts.push({ type: 'spark', x: h.x + rand(0, h.w), y: GROUND - rand(0, h.h), vx: rand(-220, 220), vy: rand(-360, -60), grav: 800, life: rand(0.6, 1.4), max: 1.4, size: rand(2, 5) });
+  }
+  decals.push({ x: h.x + h.w / 2, r: 55 });
+  if (player.inside === h) {
+    player.inside = null;
+    player.x = doorOf(h).x;
+    player.z = 0; player.vz = 0; player.onGround = true;
+    player.invuln = 0;
+    hurtPlayer(12, (Math.random() < 0.5 ? -1 : 1) * 180);
+    G.banner = '房子塌了!'; G.bannerT = 2;
+  }
+  const i = houses.indexOf(h);
+  if (i >= 0) houses.splice(i, 1);
+}
+function nearDoorHouse() {
+  for (const h of houses) {
+    if (h.type === 'deco' || h.dead) continue;
+    const d = doorOf(h);
+    if (Math.abs(player.x - d.x) < 46 && player.z < 20) return h;
+  }
+  return null;
+}
+// 安全屋物资：每次刷新在屋内 3 个点随机撒东西，走过即自动拾取。
+// 同一个房子最多刷 2 批（h.refreshes），刷完窗户灯变蓝。
+function spawnHouseLoot(h) {
+  for (let i = 0; i < 3; i++) {
+    const x = h.x + 34 + (h.w - 68) * (i + 0.5) / 3 + rand(-12, 12);
+    const r = Math.random();
+    if (r < 0.38) {
+      items.push({ type: 'medkit', x, y: GROUND - 18, z: 0, t: 0, life: 14 });
+    } else if (r < 0.74) {
+      items.push({ type: 'ammo', x, y: GROUND - 18, z: 0, t: 0, life: 14, cat: Math.random() < 0.62 ? 'bullet' : 'cell', amt: 20 });
+    } else {
+      coins.push({ x, y: GROUND - 46, vy: 0, vx: 0, v: 14, t: 0, life: 14 });
+    }
+  }
+  SFX.buy();
+}
+// 给所有「弹药类型匹配」的已装备枪械补弹，返回实际补到的总数。
+// 带 3 把科幻枪时打碎实弹箱会补到 0 —— 这就是 2 类弹药的设计意图。
+function grantAmmo(cat, amt) {
+  let total = 0;
+  for (const w of player.weapons) {
+    if (!w || w.def.melee) continue;
+    if ((w.def.ammoType || 'bullet') !== cat) continue;
+    const max = w.def.ammoMax || 120;
+    const before = w.ammo;
+    w.ammo = Math.min(max, w.ammo + amt);
+    total += Math.round(w.ammo - before);
+  }
+  return total;
+}
+
+// ============================== 更新 ==============================
+function update(dt) {
+  G.time += dt;
+  // 玩家
+  let mv = 0;
+  if (keys.KeyA || keys.ArrowLeft) mv -= 1;
+  if (keys.KeyD || keys.ArrowRight) mv += 1;
+  const spd = 190;   // v2：250 → 190，整体节奏降下来
+  if (!player.inside) player.vx = mv * spd + player.kb;
+  player.kb *= Math.pow(0.01, dt);
+  player.x = clamp(player.x + player.vx * dt, 50, WORLD_W - 50);
+  if (Math.abs(mv) > 0 && !player.inside) player.walkT += dt * 10; else if (player.onGround) player.walkT = 0;
+  // 朝向：移动即转向。挥砍动作中锁住朝向，否则判定框会突然甩到背后
+  if (mv !== 0 && !player.inside && player.swingT <= 0) player.facing = mv;
+  // 跳跃/重力 —— 多层地形版（W / ↑ 专用，空格已经让给开火了）
+  // 门口向上跳 = 进屋；屋内跳一下 = 出来。两者都只在「按下的那一帧」生效，不和按住连跳冲突。
+  const jumpHold = keys.KeyW || keys.ArrowUp;
+  const jumpTap = pressed.KeyW || pressed.ArrowUp;
+  if (player.inside) {
+    if (jumpTap) exitHouse();                              // 屋内跳一下 = 出去
+  } else {
+    const door = nearDoorHouse();
+    if (jumpTap && door && door.type === 'safe') enterHouse(door);   // 门口跳 = 进去（不跳起来）
+    else if (jumpHold && player.onGround) { player.vz = 560; player.onGround = false; SFX.jump(); }
+  }
+  stepOnFloors(player, dt, true);
+  player.invuln = Math.max(0, player.invuln - dt);
+  // 瞄准：只能水平，由朝向派生。保留 aim 弧度字段 → 所有下游绘制/战斗/闪电链代码零改动。
+  // cos(0)=1 / cos(π)=-1 决定枪口朝向，sin() 恒为 0 让弹道水平。跳起时 z 抬高枪口 → 打中僵尸头部 = 爆头。
+  player.aim = player.facing > 0 ? 0 : Math.PI;
+  player.swingT = Math.max(0, player.swingT - dt);
+  for (const w of player.weapons) w.cd = Math.max(0, w.cd - dt);
+  // 开火：按住空格即按武器射速连发（attack() 内部用 w.cd 限速）
+  if (keys.Space && !player.inside && G.state === 'play' && !G.paused) attack();
+
+  // 安全屋：完全安全、想待多久待多久。但物资最多刷 2 批，而且房子会被僵尸砸塌（见 damageHouse）。
+  // 不需要再叠一层限时 —— 房子自己就是倒计时。
+  if (player.inside) {
+    const h = player.inside;
+    h.refreshT -= dt;
+    if (h.refreshes < 2 && h.refreshT <= 0) {
+      spawnHouseLoot(h);
+      h.refreshes++;
+      h.refreshT = 8;
+    }
+  }
+  for (const h of houses) if (h.hitT > 0) h.hitT = Math.max(0, h.hitT - dt);
+  for (const p of props) if (p.hitT > 0) p.hitT = Math.max(0, p.hitT - dt);
+
+  // 子弹
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const b = bullets[i];
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    b.vy += b.grav * dt;
+    if (b.vy > 0 && b.y >= GUN_Y) { b.y = GUN_Y; b.vy = 0; }   // 高处射出的子弹压回腰部高度后转平
+    b.life -= dt;
+    let dead = b.life <= 0 || b.x < 20 || b.x > WORLD_W - 20;
+    if (b.y >= GROUND) dead = true;
+    if (!dead) {
+      for (let j = zombies.length - 1; j >= 0; j--) {
+        const z = zombies[j];
+        const zy = z.y();
+        // 判定框上下各放宽 V_TOL，兼容跳跃射击和站在高台上射击（见 V_TOL 处的说明）
+        if (b.x > z.x - z.w / 2 - 2 && b.x < z.x + z.w / 2 + 2 &&
+            b.y > zy - z.h - V_TOL && b.y < zy + V_TOL) {
+          // 爆头 = 开枪瞬间人在空中。巨型尸 h=118，头在跳跃顶点之上，跳射也够不到。
+          const headshot = !!b.air && !z.def.noHeadshot;
+          damageZombie(z, j, b.dmg, headshot, b.vx * 0.16, b.noArmor, true);   // 最后一参 = 这是子弹
+          dead = true;
+          break;
+        }
+      }
+    }
+    // 场景物件（僵尸优先 —— 挡在僵尸后面的箱子不该吃掉这一枪）
+    if (!dead) {
+      for (let j = props.length - 1; j >= 0; j--) {
+        const p = props[j];
+        if (!p.def.solid) continue;
+        if (b.x > p.x - p.w / 2 - 2 && b.x < p.x + p.w / 2 + 2 &&
+            b.y > GROUND - p.z - p.h && b.y < GROUND - p.z) {
+          damageProp(p, j, b.dmg);
+          dead = true;
+          break;
+        }
+      }
+    }
+    if (dead) {
+      if (b.y >= GROUND && b.life > 0) {
+        decals.push({ x: b.x, r: 2.5 });
+        for (let p = 0; p < 3; p++) parts.push({ type: 'spark', x: b.x, y: GROUND - 2, vx: rand(-90, 90), vy: rand(-160, -40), grav: 700, life: 0.25, max: 0.25, size: 1.6 });
+      }
+      bullets.splice(i, 1);
+    }
+  }
+
+  // 僵尸
+  for (let i = zombies.length - 1; i >= 0; i--) {
+    const z = zombies[i];
+    z.hitT = Math.max(0, z.hitT - dt);
+    if (z.burnT > 0) {
+      z.burnT -= dt;
+      z.hp -= 9 * dt;
+      if (Math.random() < dt * 14) parts.push({ type: 'fire', x: z.x + rand(-z.w / 3, z.w / 3), y: z.y() - rand(10, z.h), vx: rand(-20, 20), vy: rand(-90, -30), life: 0.3, max: 0.3, size: rand(4, 8), t: 0 });
+      if (z.hp <= 0) { killZombie(z, i, false); continue; }
+    }
+    const targetX = player.inside ? doorOf(player.inside).x : player.x;
+    const dx = targetX - z.x;
+    z.atkT -= dt;
+    z.wob += dt * 4;
+    z.boredT = Math.max(0, (z.boredT || 0) - dt);
+
+    if (z.boredT > 0) {
+      // —— 游走：砸了几下之后失去兴趣，朝背离门的方向溜达一阵子 ——
+      // 之前僵尸会站在门口一直砸到房子塌，既不合理也让安全屋失去了"喘息点"的意义。
+      z.pound = false;
+      z.dir = z.x < targetX ? -1 : 1;
+      z.x += z.dir * z.spd * 0.55 * dt;
+      z.walkT += dt * (2 + z.spd * 0.03);
+      if (Math.random() < dt * 0.8) z.walkT = 0;      // 走走停停，像在闲逛
+    } else {
+      z.dir = dx >= 0 ? 1 : -1;
+      // 必须在同一层才算"够得着" —— 否则站在高台上会被下面的僵尸隔空咬
+      const sameLevel = Math.abs(z.z - player.z) < 30;
+      const attacking = Math.abs(dx) < (z.w / 2 + player.w / 2 + 8) && !player.inside && sameLevel;
+      const rg = z.def.ranged;
+
+      // —— 自爆尸：贴上来就点引信 ——
+      if (z.def.explode && !z.fuse && !player.inside &&
+          Math.abs(dx) < 54 && Math.abs(z.z - player.z) < 44) {
+        z.fuse = z.def.explode.fuse;
+        SFX.fuse();
+      }
+      if (z.fuse > 0) {
+        z.fuse -= dt;
+        z.walkT += dt * 9;
+        if (z.fuse <= 0) { explodeZombie(z, i); continue; }
+      }
+
+      // —— 远程僵尸：维持距离，抛物线投掷（能打到高台上，是高台唯一的威胁）——
+      if (rg && !player.inside && !(z.fuse > 0)) {
+        z.shootT = (z.shootT === undefined ? rand(0.6, 1.8) : z.shootT) - dt;
+        if (z.shootT <= 0 && Math.abs(dx) < rg.keep + 260 && Math.abs(z.z - player.z) < 170) {
+          z.shootT = rg.cd * rand(0.85, 1.2);
+          throwAt(z, player.x, GROUND - player.z - 44, rg);
+        }
+      }
+
+      // —— 跳跃者：中距离蓄力扑过来 ——
+      if (z.def.pounce && !player.inside && sameLevel) {
+        z.pounceT = (z.pounceT === undefined ? rand(1, 3) : z.pounceT) - dt;
+        if (z.pounceT <= 0 && Math.abs(dx) > 70 && Math.abs(dx) < 430) {
+          z.pounceT = z.def.pounce.cd;
+          z.lungeT = 0.45;
+          z.lungeDir = z.dir;
+          SFX.jump();
+        }
+      }
+      if (z.lungeT > 0) {
+        z.lungeT -= dt;
+        z.x += z.lungeDir * z.def.pounce.spd * dt;
+        z.walkT += dt * 13;
+      } else if (!attacking && !(z.fuse > 0)) {
+        // 远程僵尸维持距离：太远就走近，太近就往后撤
+        if (!rg || Math.abs(dx) > rg.keep) {
+          z.x += z.dir * z.spd * dt;
+          z.walkT += dt * (2 + z.spd * 0.05);
+        } else if (Math.abs(dx) < rg.keep - 70) {
+          z.x -= z.dir * z.spd * dt * 0.9;
+          z.walkT += dt * (2 + z.spd * 0.05);
+        }
+      }
+      if (attacking && z.atkT <= 0 && !(z.fuse > 0)) {
+        z.atkT = z.def.atk;
+        hurtPlayer(z.def.dmg * (1 + (G.wave - 1) * 0.05), z.dir * 150);
+      }
+      // 玩家躲在屋里时，门口的僵尸会砸墙 —— 但只砸 2~4 下就失去兴趣去游走
+      if (player.inside && Math.abs(z.x - targetX) < 70) {
+        z.pound = true;
+        if (z.atkT <= 0) {
+          z.atkT = z.def.atk;
+          damageHouse(player.inside, z.def.dmg * (z.def.smash || 1) * 0.7);
+          if (z.poundLeft === undefined) z.poundLeft = irand(2, 4);
+          if (--z.poundLeft <= 0) { z.boredT = rand(4, 9); z.poundLeft = undefined; }
+        }
+      } else z.pound = false;
+    }
+    z.vy = z.vy || 0;
+    z.x += z.vy * dt;
+    z.vy *= Math.pow(0.008, dt);
+    stepOnFloors(z, dt, false);        // 走到平台边缘会掉下去，和玩家同一套物理
+    z.x = clamp(z.x, 40, WORLD_W - 40);
+  }
+
+  // 僵尸投掷物 + 地面危险区
+  updateZProj(dt);
+
+  // 火焰粒子
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const p = parts[i];
+    p.life -= dt;
+    if (p.life <= 0) { parts.splice(i, 1); continue; }
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    if (p.grav) p.vy += p.grav * dt;
+    if (p.type === 'fire') {
+      p.vx *= Math.pow(0.25, dt); p.vy *= Math.pow(0.25, dt);
+      p.vy -= 60 * dt;
+      p.t += dt;
+      if (p.y >= GROUND) p.life = Math.min(p.life, 0.1);
+      for (let j = zombies.length - 1; j >= 0; j--) {
+        const z = zombies[j], zy = z.y();
+        if (p.x > z.x - z.w / 2 - 6 && p.x < z.x + z.w / 2 + 6 && p.y > zy - z.h - 6 && p.y < zy + 4) {
+          damageZombieFire(z, j, 26 * dt);
+        }
+      }
+    }
+    if ((p.type === 'blood' || p.type === 'shell' || p.type === 'head') && p.y >= GROUND) {
+      p.y = GROUND; p.vy = -p.vy * 0.3; p.vx *= 0.5;
+      if (Math.abs(p.vy) < 40) { p.vy = 0; p.grav = 0; p.vx = 0; }
+      if (p.type === 'blood' && p.life > 0.15) p.life = Math.min(p.life, 0.35);
+    }
+  }
+
+  // 金币
+  for (let i = coins.length - 1; i >= 0; i--) {
+    const c = coins[i];
+    c.t += dt; c.life -= dt;
+    c.vy += 900 * dt;
+    c.y += c.vy * dt; c.x += c.vx * dt;
+    if (c.y > GROUND - 8) { c.y = GROUND - 8; c.vy = -Math.abs(c.vy) * 0.45; c.vx *= 0.7; if (Math.abs(c.vy) < 60) c.vy = 0; }
+    const dx = player.x - c.x, dy = (GROUND - 40 - player.z) - c.y;
+    const d = Math.hypot(dx, dy);
+    if (d < 110) { c.x += dx / d * 420 * dt; c.y += dy / d * 420 * dt; }
+    if (d < 26) {
+      player.cash += c.v;
+      texts.push({ x: c.x, y: c.y - 10, txt: '+$' + c.v, col: '#e8c559', life: 0.6, max: 0.6, vy: -70 });
+      SFX.coin();
+      coins.splice(i, 1);
+      continue;
+    }
+    if (c.life <= 0) coins.splice(i, 1);
+  }
+
+  // 道具（蝙蝠/医疗包）
+  for (let i = items.length - 1; i >= 0; i--) {
+    const it = items[i];
+    it.t += dt; it.life -= dt;
+    if (Math.abs(player.x - it.x) < 34 && Math.abs(player.z - (it.z || 0)) < 50) {
+      if (it.type === 'bat') {
+        if (player.bats < 3) { player.bats++; texts.push({ x: it.x, y: it.y - 20, txt: '蝙蝠 +1', col: '#b48ae0', life: 1, max: 1, vy: -50 }); SFX.bat(); }
+        else { player.cash += 20; texts.push({ x: it.x, y: it.y - 20, txt: '+$20', col: '#e8c559', life: 1, max: 1, vy: -50 }); SFX.coin(); }
+      } else if (it.type === 'ammo') {
+        const n = grantAmmo(it.cat, it.amt);
+        if (n > 0) {
+          texts.push({ x: it.x, y: it.y - 20, txt: (it.cat === 'cell' ? '能量 +' : '弹药 +') + n, col: '#b0c8e0', life: 1, max: 1, vy: -50 });
+          SFX.buy();
+        } else {
+          // 没有对应类型的枪 —— 换成一点钱，不至于白捡
+          player.cash += 10;
+          texts.push({ x: it.x, y: it.y - 20, txt: '用不上 +$10', col: '#8a9682', life: 1, max: 1, vy: -50 });
+          SFX.coin();
+        }
+      } else {
+        player.hp = Math.min(player.maxHp, player.hp + 30);
+        texts.push({ x: it.x, y: it.y - 20, txt: '+30 HP', col: '#7ce07c', life: 1, max: 1, vy: -50 });
+        SFX.buy();
+      }
+      items.splice(i, 1);
+      continue;
+    }
+    if (it.life <= 0) items.splice(i, 1);
+  }
+
+  // 文字/电弧
+  for (let i = texts.length - 1; i >= 0; i--) {
+    const t = texts[i];
+    t.life -= dt; t.y += (t.vy || -50) * dt;
+    if (t.life <= 0) texts.splice(i, 1);
+  }
+  for (let i = arcs.length - 1; i >= 0; i--) {
+    arcs[i].life -= dt;
+    if (arcs[i].life <= 0) arcs.splice(i, 1);
+  }
+
+  // 刷怪（按推进距离收紧）+ 推进判定（越过栅栏 → 关卡结束）
+  updateSpawner(dt);
+  updateProgress(dt);
+  if (G.state === 'play' && !G.cleared) {
+    G.groanT -= dt;
+    if (G.groanT <= 0) {
+      G.groanT = rand(2, 6);
+      if (zombies.length > 0) {
+        const z = choice(zombies);
+        SFX.groan(clamp(1 - Math.abs(z.x - player.x) / 900, 0.15, 1));
+      }
+    }
+  }
+
+  G.bannerT = Math.max(0, G.bannerT - dt);
+  G.hurtT = Math.max(0, G.hurtT - dt);
+  G.flashT = Math.max(0, G.flashT - dt);
+  G.shake = Math.max(0, G.shake - dt * 26);
+
+  // 相机
+  const tx = clamp(player.x + player.facing * 50, VW / 2, WORLD_W - VW / 2);
+  cam.x = lerp(cam.x, tx, 1 - Math.pow(0.0008, dt));
+}
+function damageZombieFire(z, j, dmg) {
+  z.hp -= dmg;
+  z.burnT = 2;
+  z.hitT = 0.05;
+  if (z.hp <= 0) killZombie(z, j, false);
+}
+
+// ============================== 绘制 ==============================
+function drawSky() {
+  const m = G.map || MAPS[0];
+  const [c0, c1, c2] = m.sky;
+
+  if (m.skyKind === 'tunnel') {
+    // ── 地铁隧道：水泥洞壁 + 顶部灯管 ──
+    ctx.fillStyle = c0; ctx.fillRect(0, 0, VW, VH);
+    const g = ctx.createLinearGradient(0, 0, 0, GROUND + 40);
+    g.addColorStop(0, c0); g.addColorStop(0.5, c1); g.addColorStop(1, c2);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, VW, GROUND + 40);
+    ctx.fillStyle = '#171b21';                       // 拱顶
+    ctx.beginPath();
+    ctx.moveTo(0, 0); ctx.lineTo(VW, 0); ctx.lineTo(VW, 86);
+    ctx.quadraticCurveTo(VW / 2, 196, 0, 86);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#2a3038'; ctx.lineWidth = 8;   // 管线
+    for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(0, 34 + i * 15); ctx.lineTo(VW, 34 + i * 15); ctx.stroke(); }
+    const ls = Math.floor((cam.x * 0.3 - VW / 2) / 340) * 340;
+    for (let x = ls; x < cam.x * 0.3 + VW / 2 + 340; x += 340) {
+      const px = x - cam.x * 0.3 + VW / 2;
+      ctx.fillStyle = `rgba(150,220,240,${0.35 + 0.1 * Math.sin(G.time * 3 + x)})`;
+      ctx.beginPath(); ctx.arc(px, 118, 130, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#cfe8f0'; ctx.fillRect(px - 58, 96, 116, 9);
+    }
+    return;
+  }
+
+  if (m.skyKind === 'lab') {
+    // ── 生化研究所：冷白墙面 + 荧光灯带 + 面板缝 ──
+    const g = ctx.createLinearGradient(0, 0, 0, GROUND + 40);
+    g.addColorStop(0, c0); g.addColorStop(0.6, c1); g.addColorStop(1, c2);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, VW, VH);
+    ctx.save(); ctx.translate(-(cam.x * 0.25) % 160, 0);
+    ctx.strokeStyle = 'rgba(140,200,230,0.10)'; ctx.lineWidth = 2;
+    for (let x = -160; x < VW + 200; x += 160) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, GROUND); ctx.stroke(); }
+    for (let y = 60; y < GROUND; y += 90) { ctx.beginPath(); ctx.moveTo(-160, y); ctx.lineTo(VW + 200, y); ctx.stroke(); }
+    ctx.restore();
+    for (let i = 0; i < 3; i++) {                    // 顶部灯带
+      const y = 40 + i * 26;
+      ctx.fillStyle = `rgba(168,224,255,${0.14 - i * 0.04})`;
+      ctx.fillRect(0, y, VW, 6);
+    }
+    const ls = Math.floor((cam.x * 0.4 - VW / 2) / 300) * 300;
+    for (let x = ls; x < cam.x * 0.4 + VW / 2 + 300; x += 300) {
+      const px = x - cam.x * 0.4 + VW / 2;
+      ctx.fillStyle = 'rgba(168,224,255,0.10)';
+      ctx.beginPath(); ctx.arc(px, 120, 170, 0, TAU); ctx.fill();
+    }
+    drawFog(m, 0.5);
+    return;
+  }
+
+  // ── 户外 ──
+  const g = ctx.createLinearGradient(0, 0, 0, GROUND);
+  g.addColorStop(0, c0); g.addColorStop(0.55, c1); g.addColorStop(1, c2);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, VW, GROUND + 40);
+
+  if (m.stars) {                                     // 星星（视差 0.1）
+    for (const st of stars) {
+      const sx = (st.x - cam.x * 0.1) % (VW * 2);
+      const px = sx < 0 ? sx + VW * 2 : sx;
+      if (px > VW) continue;
+      const tw = 0.5 + 0.5 * Math.sin(G.time * 2 + st.tw);
+      ctx.globalAlpha = 0.30 + tw * 0.45;
+      ctx.fillStyle = '#dce6ff';
+      ctx.fillRect(px, st.y, st.s, st.s);
+    }
+    ctx.globalAlpha = 1;
+  }
+  if (m.moon) {                                      // 月亮
+    const mx = 980 - cam.x * 0.05 % 300;
+    ctx.fillStyle = '#e8e4c8';
+    ctx.beginPath(); ctx.arc(mx, 110, 42, 0, TAU); ctx.fill();
+    ctx.fillStyle = 'rgba(200,196,168,0.85)';
+    ctx.beginPath(); ctx.arc(mx - 12, 100, 8, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(mx + 14, 122, 6, 0, TAU); ctx.fill();
+    ctx.beginPath(); ctx.arc(mx + 4, 92, 4, 0, TAU); ctx.fill();
+  }
+  if (m.cloud) {                                     // 云（视差 0.15）
+    const cs = Math.floor((cam.x * 0.15 - VW) / 420) * 420;
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    for (let x = cs; x < cam.x * 0.15 + VW + 420; x += 420) {
+      const px = x - cam.x * 0.15;
+      const py = 90 + ((x / 420) % 3) * 46;
+      for (let k = 0; k < 3; k++) {
+        ctx.beginPath(); ctx.ellipse(px + k * 48, py + (k === 1 ? -14 : 0), 62 - k * 8, 24, 0, 0, TAU); ctx.fill();
+      }
+    }
+  }
+  // 远景（视差 0.25）—— 山丘或者建筑剪影
+  ctx.fillStyle = m.skyline;
+  ctx.beginPath();
+  ctx.moveTo(0, GROUND);
+  for (const h of hills) {
+    const px = h.x - cam.x * 0.25;
+    if (px < -200 || px > VW + 200) continue;
+    ctx.lineTo(px, GROUND - 120 - h.h);
+    ctx.lineTo(px + 65, GROUND - 60 - h.h * 0.7);
+  }
+  ctx.lineTo(VW, GROUND);
+  ctx.closePath();
+  ctx.fill();
+
+  if (m.rain && G.state === 'play') {                // 雨丝
+    ctx.strokeStyle = 'rgba(180,200,220,0.22)'; ctx.lineWidth = 1.5;
+    for (let i = 0; i < 70; i++) {
+      const px = (i * 137 - cam.x * 0.6 + G.time * 260) % (VW + 120) - 60;
+      const py = (i * 211 + G.time * 900) % (GROUND + 40);
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - 5, py + 22); ctx.stroke();
+    }
+  }
+  if (m.siren) {                                     // 警灯
+    const s = Math.floor(G.time * 3) % 2;
+    ctx.fillStyle = s ? 'rgba(200,50,40,0.07)' : 'rgba(60,110,200,0.07)';
+    ctx.fillRect(0, 0, VW, VH);
+  }
+  drawFog(m, 1);
+}
+function drawFog(m, scale) {
+  const fog = ctx.createLinearGradient(0, GROUND - 190, 0, GROUND);
+  fog.addColorStop(0, `rgba(${m.fogCol},0)`);
+  fog.addColorStop(1, `rgba(${m.fogCol},${m.fogAmt * scale})`);
+  ctx.fillStyle = fog;
+  ctx.fillRect(0, GROUND - 190, VW, 190);
+}
+function drawHouse(h) {
+  const d = doorOf(h);
+  const sx = h.x - cam.x + VW / 2;
+  if (sx < -400 || sx > VW + 400) return;
+  const top = GROUND - h.h;
+  ctx.textAlign = 'center';
+
+  // 受损程度：0 = 完好，1 = 将塌。四档表现 —— 裂纹 → 缺角 → 冒烟 → 整体倾斜
+  const dmg = h.type === 'safe' ? 1 - clamp(h.hp / h.maxHp, 0, 1) : 0;
+
+  ctx.save();
+  if (dmg > 0.5) {                                  // 严重受损时楼体开始倾斜
+    const cx = sx + h.w / 2;
+    ctx.translate(cx, GROUND);
+    ctx.rotate((dmg - 0.5) * 0.10 * (h.seed > 0.5 ? 1 : -1));
+    ctx.translate(-cx, -GROUND);
+  }
+
+  // 墙
+  ctx.fillStyle = dmg > 0.4 ? '#37301f' : '#3e3428';
+  ctx.fillRect(sx, top, h.w, h.h);
+  ctx.strokeStyle = '#241c12'; ctx.lineWidth = 4;
+  ctx.strokeRect(sx + 2, top + 2, h.w - 4, h.h - 2);
+  // 木板纹
+  ctx.strokeStyle = 'rgba(20,15,8,0.35)'; ctx.lineWidth = 2;
+  for (let y = top + 24; y < GROUND - 8; y += 26) {
+    ctx.beginPath(); ctx.moveTo(sx + 6, y); ctx.lineTo(sx + h.w - 6, y); ctx.stroke();
+  }
+  // 裂纹
+  if (dmg > 0.12) {
+    ctx.strokeStyle = `rgba(10,7,4,${0.35 + dmg * 0.5})`;
+    ctx.lineWidth = 2.5;
+    const n = 2 + Math.floor(dmg * 7);
+    for (let i = 0; i < n; i++) {
+      const bx = sx + 20 + ((i * 97 + h.seed * 611) % Math.max(1, h.w - 44));
+      const by = top + 16 + ((i * 71 + h.seed * 337) % Math.max(1, h.h - 44));
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx + 14 - (i % 3) * 10, by + 18);
+      ctx.lineTo(bx - 8 + (i % 4) * 7, by + 36);
+      ctx.stroke();
+    }
+  }
+  // 缺角
+  if (dmg > 0.45) {
+    ctx.fillStyle = 'rgba(12,9,5,0.88)';
+    for (let i = 0; i < 3; i++) {
+      const bx = sx + 12 + ((i * 131 + h.seed * 419) % Math.max(1, h.w - 46));
+      ctx.beginPath();
+      ctx.moveTo(bx, top + 2);
+      ctx.lineTo(bx + 22 + (i % 2) * 14, top + 2);
+      ctx.lineTo(bx + 8, top + 20 + (i % 3) * 12);
+      ctx.closePath(); ctx.fill();
+    }
+  }
+  // 屋顶
+  ctx.fillStyle = '#2a2018';
+  ctx.beginPath();
+  ctx.moveTo(sx - 18, top);
+  ctx.lineTo(sx + h.w / 2, top - 64);
+  ctx.lineTo(sx + h.w + 18, top);
+  ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#1a140c'; ctx.lineWidth = 3; ctx.stroke();
+  if (dmg > 0.3) {                                  // 屋顶缺口
+    const gx = sx + h.w * (0.3 + h.seed * 0.3);
+    ctx.fillStyle = 'rgba(6,4,3,0.9)';
+    ctx.beginPath();
+    ctx.moveTo(gx, top - 34); ctx.lineTo(gx + 30, top); ctx.lineTo(gx - 6, top);
+    ctx.closePath(); ctx.fill();
+  }
+
+  // 门
+  const dx = d.x - cam.x + VW / 2;
+  ctx.fillStyle = '#171009';
+  ctx.fillRect(dx - d.w / 2, GROUND - d.h, d.w, d.h);
+  ctx.strokeStyle = '#241c12'; ctx.lineWidth = 4;
+  ctx.strokeRect(dx - d.w / 2, GROUND - d.h, d.w, d.h);
+  // 危房：门上钉着横板、边上加了立柱封死 —— 一眼看出进不去
+  if (h.type !== 'safe') {
+    ctx.strokeStyle = '#6b5433'; ctx.lineWidth = 7;
+    ctx.beginPath();
+    for (let k = 0; k < 3; k++) {
+      const py = GROUND - d.h + 16 + k * (d.h - 34) / 2;
+      ctx.moveTo(dx - d.w / 2 - 9, py); ctx.lineTo(dx + d.w / 2 + 9, py);
+    }
+    ctx.stroke();
+    ctx.strokeStyle = '#3d2f1c'; ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(dx - d.w / 2 - 10, GROUND - 10); ctx.lineTo(dx - d.w / 2 - 10, GROUND - d.h + 2);
+    ctx.moveTo(dx + d.w / 2 + 10, GROUND - 10); ctx.lineTo(dx + d.w / 2 + 10, GROUND - d.h + 2);
+    ctx.stroke();
+  }
+
+  // 安全屋没有文字门牌 —— 有没有物资只看窗户灯的颜色：绿 = 还有，蓝 = 已刷完
+  const safeHas = h.type === 'safe' && h.refreshes < 2;
+  if (h.type === 'safe' && G.state !== 'menu') {
+    const pulse = 0.5 + 0.5 * Math.sin(G.time * 4);
+    ctx.fillStyle = safeHas ? `rgba(120,230,140,${0.06 + pulse * 0.07})` : 'rgba(80,140,255,0.045)';
+    ctx.beginPath(); ctx.arc(dx, GROUND - d.h / 2, 58, 0, TAU); ctx.fill();
+  }
+
+  // 窗（灯色 = 状态）。玩家在屋里时窗灯明显更亮、光晕更大 ——
+  // 人物本身进屋后就不绘制了（见 drawPlayer），这是"人在里面"的唯一提示。
+  // 危房（deco）的窗户是钉死的木板、里面全黑 —— 一眼就能看出这栋进不去。
+  const insideMe = player.inside === h;
+  const wn = h.w > 260 ? 3 : 2;
+  const lamp = safeHas ? '124,232,146' : '96,156,255';   // 绿 = 还有物资；蓝 = 已刷完
+  for (let i = 0; i < wn; i++) {
+    const wx = sx + 26 + i * ((h.w - 52) / Math.max(1, wn - 1));
+    if (Math.abs(wx - dx) < 50) continue;
+    const wy = top + 52;
+    if (h.type !== 'safe') {
+      ctx.fillStyle = '#161009';
+      ctx.fillRect(wx - 16, wy, 32, 30);
+      ctx.strokeStyle = '#241c12'; ctx.lineWidth = 3;
+      ctx.strokeRect(wx - 16, wy, 32, 30);
+      ctx.strokeStyle = '#5a462c'; ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(wx - 17, wy + 9); ctx.lineTo(wx + 17, wy + 9);
+      ctx.moveTo(wx - 17, wy + 22); ctx.lineTo(wx + 17, wy + 22);
+      ctx.stroke();
+      continue;
+    }
+    let flick = dmg > 0.5 ? 0.55 + 0.45 * Math.sin(G.time * 13 + i) : 1;   // 将塌时灯开始闪
+    if (insideMe) flick *= 1.3;
+    ctx.fillStyle = `rgba(${lamp},${clamp(0.78 * flick, 0, 1)})`;
+    ctx.fillRect(wx - 16, wy, 32, 30);
+    ctx.strokeStyle = '#241c12'; ctx.lineWidth = 3;
+    ctx.strokeRect(wx - 16, wy, 32, 30);
+    ctx.beginPath(); ctx.moveTo(wx - 16, wy + 15); ctx.lineTo(wx + 16, wy + 15);
+    ctx.moveTo(wx, wy); ctx.lineTo(wx, wy + 30); ctx.stroke();
+    ctx.fillStyle = `rgba(${lamp},${(insideMe ? 0.22 : 0.10) * flick})`;
+    ctx.beginPath(); ctx.arc(wx, wy + 15, insideMe ? 64 : 44, 0, TAU); ctx.fill();
+  }
+
+  // 冒烟（受损后持续）
+  if (dmg > 0.35 && G.state === 'play' && Math.random() < 0.3) {
+    parts.push({ type: 'spark', x: h.x + rand(0, h.w), y: top + rand(-10, 30), vx: rand(-14, 14), vy: rand(-44, -20), grav: -8, life: rand(0.9, 1.6), max: 1.6, size: rand(5, 11), smoke: true });
+  }
+  // 受击闪白
+  if (h.hitT > 0) {
+    ctx.fillStyle = `rgba(255,220,180,${h.hitT * 2.2})`;
+    ctx.fillRect(sx, top, h.w, h.h);
+  }
+
+  ctx.restore();
+
+  // 血条：只在受损后、且玩家在附近时才显示（避免满屏 UI）
+  if (h.type === 'safe' && dmg > 0.02 && Math.abs(player.x - h.x - h.w / 2) < 460) {
+    const bw = 92, bx = sx + h.w / 2 - bw / 2, by = top - 78;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(bx, by, bw, 8);
+    ctx.fillStyle = dmg > 0.6 ? '#d0402a' : '#d8a03a';
+    ctx.fillRect(bx + 1, by + 1, (bw - 2) * (1 - dmg), 6);
+  }
+}
+function drawStreet() {
+  const m = G.map || MAPS[0];
+  ctx.fillStyle = m.ground; ctx.fillRect(0, GROUND, VW, VH - GROUND);
+  ctx.fillStyle = m.road;   ctx.fillRect(0, GROUND, VW, 12);
+  ctx.save();
+  ctx.translate(-cam.x + VW / 2, 0);
+  const start = Math.floor((cam.x - VW / 2) / 90) * 90;
+  const endX = cam.x + VW / 2 + 90;
+
+  switch (m.tex) {
+    case 'asphalt':                                   // 柏油：碎石 + 车道线
+      ctx.fillStyle = 'rgba(255,255,255,0.05)';
+      for (let x = start; x < endX; x += 46) ctx.fillRect(x, GROUND + 30 + ((x / 46) % 3) * 18, 26, 3);
+      ctx.strokeStyle = 'rgba(230,220,150,0.16)'; ctx.lineWidth = 5;
+      ctx.setLineDash([54, 46]);
+      ctx.beginPath(); ctx.moveTo(start, GROUND + 56); ctx.lineTo(endX, GROUND + 56); ctx.stroke();
+      ctx.setLineDash([]);
+      break;
+    case 'tile':                                      // 瓷砖：方格
+      ctx.strokeStyle = 'rgba(0,0,0,0.26)'; ctx.lineWidth = 2;
+      for (let gx = start; gx < endX; gx += 46) { ctx.beginPath(); ctx.moveTo(gx, GROUND); ctx.lineTo(gx, VH); ctx.stroke(); }
+      for (let gy = GROUND + 22; gy < VH; gy += 22) { ctx.beginPath(); ctx.moveTo(start, gy); ctx.lineTo(endX, gy); ctx.stroke(); }
+      break;
+    case 'track':                                     // 塑胶跑道
+      ctx.fillStyle = 'rgba(255,255,255,0.10)';
+      for (let gy = GROUND + 20; gy < VH; gy += 34) ctx.fillRect(start, gy, VW + 200, 3);
+      ctx.fillStyle = 'rgba(245,245,245,0.55)';
+      for (let gx = start; gx < endX; gx += 130) ctx.fillRect(gx, GROUND + 12, 60, 6);
+      break;
+    case 'sand':                                      // 沙地：小石子
+      ctx.fillStyle = 'rgba(255,240,200,0.07)';
+      for (let x = start; x < endX; x += 30) ctx.fillRect(x, GROUND + 26 + ((x / 30) % 4) * 16, 16, 3);
+      break;
+    case 'concrete':                                  // 水泥：沉降缝
+      ctx.strokeStyle = 'rgba(0,0,0,0.30)'; ctx.lineWidth = 2;
+      for (let gy = GROUND + 26; gy < VH; gy += 30) { ctx.beginPath(); ctx.moveTo(start, gy); ctx.lineTo(endX, gy); ctx.stroke(); }
+      break;
+    case 'panel':                                     // 金属地板
+      ctx.strokeStyle = 'rgba(160,220,255,0.10)'; ctx.lineWidth = 2;
+      for (let gx = start; gx < endX; gx += 74) { ctx.beginPath(); ctx.moveTo(gx, GROUND); ctx.lineTo(gx, VH); ctx.stroke(); }
+      ctx.fillStyle = 'rgba(140,220,255,0.20)';
+      ctx.fillRect(start, GROUND + 48, VW + 200, 3);
+      break;
+    default:                                          // dirt：土路上的踩痕
+      for (let x = start; x < endX; x += 90) {
+        ctx.fillStyle = 'rgba(15,12,8,0.42)';
+        ctx.fillRect(x + 10, GROUND + 18 + ((x / 90) % 3) * 16, 46, 8);
+        ctx.fillStyle = 'rgba(50,44,36,0.55)';
+        ctx.fillRect(x + 60, GROUND + 40 - ((x / 90) % 2) * 20, 18, 6);
+      }
+      break;
+  }
+
+  // 血迹 / 残骸
+  for (const d of decals) {
+    if (d.x < cam.x - VW / 2 - 60 || d.x > cam.x + VW / 2 + 60) continue;
+    ctx.fillStyle = 'rgba(90,12,10,0.45)';
+    ctx.beginPath(); ctx.ellipse(d.x, GROUND + 6, d.r, d.r * 0.3, 0, 0, TAU); ctx.fill();
+  }
+  ctx.restore();
+
+  // 路灯 / 霓虹 / 荧光灯
+  if (m.lamp === 'none') return;
+  const spacing = m.lamp === 'neon' ? 380 : m.lamp === 'fluorescent' ? 440 : 520;
+  const ls = Math.floor((cam.x - VW / 2) / spacing) * spacing;
+  for (let x = ls; x < cam.x + VW / 2 + spacing; x += spacing) {
+    const px = x - cam.x + VW / 2;
+    if (m.lamp === 'fluorescent') {                  // 室内荧光灯：顶部的长灯管
+      ctx.fillStyle = '#3a4048';
+      ctx.fillRect(px - 46, 22, 92, 10);
+      ctx.fillStyle = m.lampCol;
+      ctx.fillRect(px - 42, 25, 84, 5);
+      ctx.fillStyle = `rgba(${m.lamp === 'fluorescent' ? '200,235,245' : '255,220,130'},0.07)`;
+      ctx.beginPath(); ctx.arc(px, 40, 150, 0, TAU); ctx.fill();
+    } else {
+      ctx.fillStyle = m.lamp === 'neon' ? '#2a2030' : '#1a1a20';
+      ctx.fillRect(px - 4, GROUND - 150, 8, 150);
+      ctx.fillRect(px - 4, GROUND - 150, 34, 6);
+      const glow = m.lamp === 'neon' ? (0.6 + 0.4 * Math.sin(G.time * 4 + x)) : 1;
+      ctx.fillStyle = m.lampCol;
+      ctx.beginPath(); ctx.arc(px + 30, GROUND - 142, 7, 0, TAU); ctx.fill();
+      ctx.globalAlpha = glow;
+      const [r, g2, b] = m.lamp === 'neon' ? [255, 106, 176] : [255, 220, 130];
+      ctx.fillStyle = `rgba(${r},${g2},${b},0.10)`;
+      ctx.beginPath(); ctx.arc(px + 30, GROUND - 130, 92, 0, TAU); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+  }
+}
+function drawZombie(z) {
+  const sx = z.x - cam.x + VW / 2;
+  if (sx < -150 || sx > VW + 150) return;
+  const feet = z.y();
+  const s = z.type === 'giant' ? 1 : 1;
+  const col = z.hitT > 0 ? '#ffffff' : z.def.skin;
+  const dark = 'rgba(20,30,14,0.9)';
+  ctx.save();
+  ctx.translate(sx, feet);
+  ctx.scale(z.dir, 1);
+  // 影子
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.beginPath(); ctx.ellipse(0, 6, z.w * 0.55, 7, 0, 0, TAU); ctx.fill();
+
+  if (z.def.shape === 'beast') {
+    // ── 变异犬：低矮的四足剪影 ──
+    const gait = Math.sin(z.walkT * 8);
+    ctx.strokeStyle = dark; ctx.lineWidth = 6; ctx.lineCap = 'round';
+    for (let k = 0; k < 2; k++) {
+      const ph = k ? -gait : gait;
+      ctx.beginPath(); ctx.moveTo(-z.w * 0.2, -z.h * 0.5); ctx.lineTo(-z.w * 0.3 + ph * 12, -2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(z.w * 0.2, -z.h * 0.5); ctx.lineTo(z.w * 0.3 - ph * 12, -2); ctx.stroke();
+    }
+    // 尾巴
+    ctx.strokeStyle = col; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(-z.w * 0.42, -z.h * 0.58);
+    ctx.quadraticCurveTo(-z.w * 0.74, -z.h * 0.8 + gait * 6, -z.w * 0.66, -z.h * 0.98 + gait * 10);
+    ctx.stroke();
+    // 躯干
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.ellipse(0, -z.h * 0.52, z.w * 0.46, z.h * 0.25, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = dark; ctx.lineWidth = 3; ctx.stroke();
+    // 背刺
+    ctx.fillStyle = '#3a3228';
+    for (let k = -1; k <= 1; k++) {
+      ctx.beginPath();
+      ctx.moveTo(k * z.w * 0.16, -z.h * 0.7);
+      ctx.lineTo(k * z.w * 0.16 + 5, -z.h * 0.86);
+      ctx.lineTo(k * z.w * 0.16 - 5, -z.h * 0.86);
+      ctx.closePath(); ctx.fill();
+    }
+    // 头
+    const hx2 = z.w * 0.44, hy2 = -z.h * 0.68;
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.arc(hx2, hy2, z.w * 0.21, 0, TAU); ctx.fill();
+    ctx.strokeStyle = dark; ctx.lineWidth = 3; ctx.stroke();
+    // 吻部
+    ctx.fillStyle = dark;
+    ctx.beginPath();
+    ctx.moveTo(hx2 + z.w * 0.12, hy2 - 3);
+    ctx.lineTo(hx2 + z.w * 0.36, hy2 + 2);
+    ctx.lineTo(hx2 + z.w * 0.12, hy2 + 8);
+    ctx.closePath(); ctx.fill();
+    // 眼
+    ctx.fillStyle = z.def.eye;
+    ctx.beginPath(); ctx.arc(hx2 + z.w * 0.05, hy2 - 4, z.w * 0.07, 0, TAU); ctx.fill();
+  } else {
+  const walk = Math.sin(z.walkT * 6);
+  const walk2 = Math.sin(z.walkT * 6 + Math.PI);
+  // 腿
+  ctx.strokeStyle = dark; ctx.lineWidth = z.w * 0.16; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(0, -z.h * 0.42); ctx.lineTo(walk * z.w * 0.3, -2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, -z.h * 0.42); ctx.lineTo(walk2 * z.w * 0.3, -2); ctx.stroke();
+  // 后臂（伸向前）
+  const armY = -z.h * 0.72;
+  ctx.strokeStyle = col; ctx.lineWidth = z.w * 0.15;
+  ctx.beginPath(); ctx.moveTo(0, armY); ctx.lineTo(z.w * 0.55, armY - 4 + Math.sin(z.wob) * 5); ctx.stroke();
+  // 身体
+  ctx.fillStyle = z.hitT > 0 ? '#ffffff' : '#5a6a45';
+  ctx.beginPath();
+  ctx.roundRect(-z.w * 0.32, -z.h * 0.78, z.w * 0.64, z.h * 0.4, 8);
+  ctx.fill();
+  ctx.strokeStyle = dark; ctx.lineWidth = 3; ctx.stroke();
+  // 破衣服血渍
+  ctx.fillStyle = 'rgba(120,20,15,0.7)';
+  ctx.beginPath(); ctx.arc(-z.w * 0.1, -z.h * 0.62, z.w * 0.12, 0, TAU); ctx.fill();
+  ctx.beginPath(); ctx.arc(z.w * 0.14, -z.h * 0.5, z.w * 0.09, 0, TAU); ctx.fill();
+  // 前臂
+  ctx.strokeStyle = col; ctx.lineWidth = z.w * 0.16;
+  ctx.beginPath(); ctx.moveTo(0, armY); ctx.lineTo(z.w * 0.6, armY + 6 + Math.cos(z.wob) * 5); ctx.stroke();
+  // 手掌
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.arc(z.w * 0.6, armY + 6 + Math.cos(z.wob) * 5, z.w * 0.1, 0, TAU); ctx.fill();
+  // 头
+  const hx = z.w * 0.08, hy = -z.h * 0.88;
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.arc(hx, hy, z.w * 0.26, 0, TAU); ctx.fill();
+  ctx.strokeStyle = dark; ctx.lineWidth = 3; ctx.stroke();
+  // 眼
+  ctx.fillStyle = z.def.eye;
+  ctx.beginPath(); ctx.arc(hx + z.w * 0.14, hy - 3, z.w * 0.07, 0, TAU); ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.arc(hx + z.w * 0.17, hy - 3, z.w * 0.03, 0, TAU); ctx.fill();
+  // 嘴（血）
+  ctx.fillStyle = '#7a1512';
+  ctx.beginPath();
+  ctx.moveTo(hx + z.w * 0.05, hy + z.w * 0.12);
+  ctx.lineTo(hx + z.w * 0.25, hy + z.w * 0.12);
+  ctx.lineTo(hx + z.w * 0.15, hy + z.w * 0.2);
+  ctx.closePath(); ctx.fill();
+  // 重甲
+  if (z.type === 'heavy') {
+    ctx.fillStyle = '#5a5a62';
+    ctx.beginPath(); ctx.arc(hx, hy - 2, z.w * 0.29, Math.PI, TAU); ctx.fill();
+    ctx.strokeStyle = '#333'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#4a4a52';
+    ctx.fillRect(-z.w * 0.34, -z.h * 0.76, z.w * 0.68, z.h * 0.18);
+    ctx.strokeStyle = '#2c2c30'; ctx.strokeRect(-z.w * 0.34, -z.h * 0.76, z.w * 0.68, z.h * 0.18);
+  }
+  if (z.type === 'giant') {
+    ctx.strokeStyle = dark; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(hx - z.w * 0.05, hy - z.w * 0.14); ctx.lineTo(hx + z.w * 0.1, hy - z.w * 0.08); ctx.stroke();
+  }
+  // 自爆尸：鼓胀的肚子 + 引信火花
+  if (z.def.explode) {
+    ctx.fillStyle = 'rgba(150,90,50,0.85)';
+    ctx.beginPath(); ctx.ellipse(z.w * 0.04, -z.h * 0.5, z.w * 0.42, z.h * 0.24, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#4a2a14'; ctx.lineWidth = 2.5; ctx.stroke();
+    if (z.fuse > 0) {
+      const f = 1 + Math.sin(G.time * 40) * 0.5;
+      ctx.fillStyle = '#ffd070';
+      ctx.beginPath(); ctx.arc(hx, hy - z.w * 0.3, 4 * f, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,140,40,0.5)';
+      ctx.beginPath(); ctx.arc(hx, hy - z.w * 0.3, 9 * f, 0, TAU); ctx.fill();
+    }
+  }
+  // 酸液喷吐者：鼓起的喉囊 + 绿色滴液
+  if (z.def.ranged && z.def.ranged.elem === 'acid') {
+    ctx.fillStyle = '#8fbf40';
+    ctx.beginPath(); ctx.ellipse(hx + z.w * 0.06, hy + z.w * 0.2, z.w * 0.19, z.w * 0.16, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#4a6a20'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = 'rgba(140,220,60,0.55)';
+    ctx.beginPath(); ctx.arc(hx + z.w * 0.22, hy + z.w * 0.3, 3, 0, TAU); ctx.fill();
+  }
+  // 燃烧者：手里的燃烧瓶
+  if (z.def.ranged && z.def.ranged.elem === 'fire') {
+    ctx.fillStyle = '#6a4a20';
+    ctx.fillRect(z.w * 0.5, armY - 2, 12, 18);
+    const fl = 1 + Math.sin(G.time * 12) * 0.4;
+    ctx.fillStyle = '#ffb040';
+    ctx.beginPath(); ctx.arc(z.w * 0.5 + 6, armY - 6, 5 * fl, 0, TAU); ctx.fill();
+  }
+  // 跳跃者：蹲伏的后腿
+  if (z.def.pounce) {
+    ctx.strokeStyle = col; ctx.lineWidth = z.w * 0.18;
+    ctx.beginPath(); ctx.moveTo(-z.w * 0.1, -z.h * 0.42); ctx.lineTo(-z.w * 0.55, -z.h * 0.2); ctx.lineTo(-z.w * 0.3, -2); ctx.stroke();
+    if (z.lungeT > 0) {   // 扑击时身后拖一道残影
+      ctx.strokeStyle = 'rgba(128,255,208,0.4)'; ctx.lineWidth = 3;
+      for (let k = 1; k <= 3; k++) {
+        ctx.beginPath(); ctx.moveTo(-z.w * 0.3 - k * 16, -z.h * 0.5); ctx.lineTo(-z.w * 0.3 - k * 16, -z.h * 0.25); ctx.stroke();
+      }
+    }
+  }
+  }   // ← 关掉 "beast / humanoid" 的分支
+  ctx.restore();
+  // 燃烧
+  if (z.burnT > 0) {
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = 'rgba(255,120,30,0.35)';
+    ctx.fillRect(sx - z.w / 2, feet - z.h, z.w, z.h);
+    ctx.globalAlpha = 1;
+  }
+  // 血条
+  if (z.hp < z.maxHp) {
+    const bw = z.w * 1.4;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(sx - bw / 2, feet - z.h - 14, bw, 5);
+    ctx.fillStyle = z.type === 'giant' ? '#e07a3a' : '#c0392b';
+    ctx.fillRect(sx - bw / 2, feet - z.h - 14, bw * clamp(z.hp / z.maxHp, 0, 1), 5);
+  }
+}
+function drawPlayer() {
+  // 进屋即"消失" —— 屋里的状态完全由窗户灯的变化体现（见 drawHouse）
+  if (player.inside) return;
+  const sx = player.x - cam.x + VW / 2;
+  const feet = GROUND - player.z;
+  const dir = Math.cos(player.aim) >= 0 ? 1 : -1;
+  const flash = G.hurtT > 0 && player.invuln <= 0 && Math.floor(G.hurtT * 20) % 2 === 0;
+  ctx.save();
+  ctx.translate(sx, feet);
+  ctx.scale(dir, 1);
+  ctx.globalAlpha = player.invuln > 0 ? (Math.floor(G.time * 12) % 2 ? 0.4 : 0.9) : 1;
+  // 影子
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.beginPath(); ctx.ellipse(0, 6 + player.z * 0.15, 22, 7, 0, 0, TAU); ctx.fill();
+  const walk = player.z > 0 ? 0.6 : Math.sin(player.walkT * 6);
+  const walk2 = player.z > 0 ? -0.6 : Math.sin(player.walkT * 6 + Math.PI);
+  // 腿
+  ctx.strokeStyle = '#2c3440'; ctx.lineWidth = 9; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(-2, -28); ctx.lineTo(walk * 14 - 2, -2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-2, -28); ctx.lineTo(walk2 * 14 - 2, -2); ctx.stroke();
+  // 身体（夹克）
+  ctx.fillStyle = flash ? '#ff6050' : '#5a4632';
+  ctx.beginPath(); ctx.roundRect(-13, -62, 26, 36, 7); ctx.fill();
+  ctx.strokeStyle = '#2a2018'; ctx.lineWidth = 3; ctx.stroke();
+  ctx.fillStyle = '#463726';
+  ctx.fillRect(-13, -48, 26, 6);
+  // 头
+  ctx.fillStyle = flash ? '#ff8070' : '#d8b490';
+  ctx.beginPath(); ctx.arc(3, -72, 12, 0, TAU); ctx.fill();
+  ctx.strokeStyle = '#2a2018'; ctx.lineWidth = 3; ctx.stroke();
+  // 头发
+  ctx.fillStyle = '#3a2c1c';
+  ctx.beginPath(); ctx.arc(1, -76, 11, Math.PI * 0.9, TAU * 0.55); ctx.fill();
+  // 墨镜
+  ctx.fillStyle = '#101014';
+  ctx.fillRect(-6, -75, 19, 6);
+  ctx.fillStyle = 'rgba(120,180,255,0.5)';
+  ctx.fillRect(-4, -74, 6, 2);
+  // 武器
+  const w = curWeapon();
+  const aimLocal = dir === 1 ? player.aim : Math.PI - player.aim;
+  if (w.def.melee) {
+    const swing = player.swingT > 0 ? (1 - player.swingT / 0.22) : 0;
+    const sa = -1.2 + swing * 2.4;
+    ctx.save();
+    ctx.translate(6, -46);
+    ctx.rotate(sa);
+    ctx.strokeStyle = '#8a6a42'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(42, 0); ctx.stroke();
+    ctx.strokeStyle = '#6a4e2c'; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.moveTo(38, 0); ctx.lineTo(44, 0); ctx.stroke();
+    if (player.swingT > 0) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(0, 0, 46, -0.6, 0.9); ctx.stroke();
+    }
+    ctx.restore();
+  } else {
+    ctx.save();
+    ctx.translate(8, -46);
+    ctx.rotate(clamp(aimLocal, -1.3, 1.3));
+    ctx.fillStyle = '#1c1c20';
+    const L = w.def.id === 'lightning' ? 40 : w.def.id === 'flame' ? 36 : w.def.id === 'shotgun' ? 34 : w.def.id === 'smg' ? 26 : 20;
+    ctx.fillRect(0, -4, L, 8);
+    ctx.fillRect(4, -3, 10, 12);
+    if (w.def.id === 'lightning') { ctx.fillStyle = '#4a5a8a'; ctx.fillRect(L - 6, -7, 6, 14); }
+    if (w.def.id === 'flame') { ctx.fillStyle = '#7a3020'; ctx.fillRect(-8, -8, 10, 16); }
+    if (G.flashT > 0) {
+      ctx.fillStyle = 'rgba(255,240,170,0.95)';
+      ctx.beginPath();
+      ctx.moveTo(L + 2, 0); ctx.lineTo(L + 16, -7); ctx.lineTo(L + 22, 0); ctx.lineTo(L + 16, 7);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+function drawEntities() {
+  // 金币
+  for (const c of coins) {
+    const sx = c.x - cam.x + VW / 2;
+    if (sx < -30 || sx > VW + 30) continue;
+    if (c.life < 3 && Math.floor(c.life * 6) % 2 === 0) continue;
+    const sc = Math.abs(Math.cos(c.t * 7));
+    ctx.fillStyle = '#e8c030';
+    ctx.beginPath(); ctx.ellipse(sx, c.y, 7 * sc + 1.5, 7, 0, 0, TAU); ctx.fill();
+    ctx.strokeStyle = '#9a7a18'; ctx.lineWidth = 2; ctx.stroke();
+    if (sc > 0.5) { ctx.fillStyle = '#9a7a18'; ctx.font = 'bold 9px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('$', sx, c.y + 3); }
+  }
+  // 道具
+  for (const it of items) {
+    const sx = it.x - cam.x + VW / 2;
+    if (sx < -40 || sx > VW + 40) continue;
+    if (it.life < 3 && Math.floor(it.life * 6) % 2 === 0) continue;
+    if (it.type === 'bat') {
+      const flap = Math.sin(it.t * 18) * 10;
+      ctx.fillStyle = '#3a2a4a';
+      ctx.beginPath();
+      ctx.moveTo(sx, it.y);
+      ctx.quadraticCurveTo(sx - 16, it.y - 8 - flap, sx - 24, it.y + 4 - flap * 0.5);
+      ctx.quadraticCurveTo(sx - 12, it.y + 4, sx, it.y + 4);
+      ctx.quadraticCurveTo(sx + 12, it.y + 4, sx + 24, it.y + 4 - flap * 0.5);
+      ctx.quadraticCurveTo(sx + 16, it.y - 8 - flap, sx, it.y);
+      ctx.fill();
+      ctx.fillStyle = '#e8d8ff';
+      ctx.beginPath(); ctx.arc(sx, it.y - 2, 3, 0, TAU); ctx.fill();
+    } else {
+      ctx.fillStyle = '#c0392b';
+      ctx.fillRect(sx - 11, it.y - 11, 22, 22);
+      ctx.strokeStyle = '#7a2018'; ctx.lineWidth = 2; ctx.strokeRect(sx - 11, it.y - 11, 22, 22);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(sx - 2.5, it.y - 7, 5, 14);
+      ctx.fillRect(sx - 7, it.y - 2.5, 14, 5);
+    }
+  }
+  // 僵尸
+  for (const z of zombies) drawZombie(z);
+  drawPlayer();
+  // 子弹
+  ctx.strokeStyle = '#ffe9a0'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  for (const b of bullets) {
+    const sx = b.x - cam.x + VW / 2;
+    const l = Math.hypot(b.vx, b.vy) || 1;
+    ctx.beginPath();
+    ctx.moveTo(sx, b.y);
+    ctx.lineTo(sx - b.vx / l * 13, b.y - b.vy / l * 13);
+    ctx.stroke();
+  }
+  // 电弧
+  for (const a of arcs) {
+    const al = a.life / a.max;
+    ctx.strokeStyle = `rgba(160,200,255,${al})`;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    for (let i = 0; i < a.pts.length - 1; i++) {
+      const [x1, y1] = a.pts[i], [x2, y2] = a.pts[i + 1];
+      const sx1 = x1 - cam.x + VW / 2, sx2 = x2 - cam.x + VW / 2;
+      ctx.moveTo(sx1, y1);
+      const segs = 5;
+      for (let s = 1; s <= segs; s++) {
+        const t = s / segs;
+        const jx = s === segs ? 0 : rand(-14, 14);
+        const jy = s === segs ? 0 : rand(-14, 14);
+        ctx.lineTo(lerp(sx1, sx2, t) + jx, lerp(y1, y2, t) + jy);
+      }
+    }
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(255,255,255,${al * 0.8})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  // 粒子
+  for (const p of parts) {
+    const sx = p.x - cam.x + VW / 2;
+    if (sx < -60 || sx > VW + 60) continue;
+    const al = clamp(p.life / p.max, 0, 1);
+    if (p.type === 'fire') {
+      const r = clamp(1 - p.life / p.max, 0, 1);
+      ctx.globalAlpha = al;
+      ctx.fillStyle = r < 0.4 ? '#fff0a0' : r < 0.7 ? '#ff9030' : '#c03018';
+      ctx.beginPath(); ctx.arc(sx, p.y, p.size * (0.5 + r), 0, TAU); ctx.fill();
+      if (r > 0.7) { ctx.globalAlpha = al * 0.3; ctx.fillStyle = '#555'; ctx.beginPath(); ctx.arc(sx, p.y - 6, p.size * r, 0, TAU); ctx.fill(); }
+    } else if (p.type === 'blood') {
+      ctx.globalAlpha = al;
+      ctx.fillStyle = '#a01810';
+      ctx.beginPath(); ctx.arc(sx, p.y, p.size, 0, TAU); ctx.fill();
+    } else if (p.type === 'spark') {
+      if (p.smoke) {                                  // 安全屋受损后冒的烟
+        ctx.globalAlpha = al * 0.32;
+        ctx.fillStyle = '#6a6258';
+        ctx.beginPath(); ctx.arc(sx, p.y, p.size * (1 + (1 - al) * 1.5), 0, TAU); ctx.fill();
+      } else {
+        ctx.globalAlpha = al;
+        ctx.fillStyle = '#ffe9b0';
+        ctx.fillRect(sx - 1.5, p.y - 1.5, 3, 3);
+      }
+    } else if (p.type === 'shell') {
+      ctx.globalAlpha = al;
+      ctx.fillStyle = '#c8a028';
+      ctx.fillRect(sx - 2, p.y - 1.5, 4, 3);
+    } else if (p.type === 'head') {
+      ctx.globalAlpha = al;
+      ctx.fillStyle = p.skin;
+      ctx.beginPath(); ctx.arc(sx, p.y, p.size, 0, TAU); ctx.fill();
+      ctx.strokeStyle = 'rgba(20,30,14,0.9)'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = p.eye;
+      ctx.beginPath(); ctx.arc(sx + p.size * 0.4, p.y - 2, p.size * 0.25, 0, TAU); ctx.fill();
+      ctx.strokeStyle = '#a01810'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(sx - p.size * 0.5, p.y + p.size * 0.4); ctx.lineTo(sx - p.size, p.y + p.size * 0.7); ctx.stroke();
+    } else if (p.type === 'corpse') {
+      ctx.globalAlpha = al * 0.85;
+      ctx.save();
+      ctx.translate(sx, GROUND - 6);
+      ctx.scale(-p.dir, 1);
+      ctx.rotate(-0.1);
+      ctx.fillStyle = p.skin;
+      ctx.beginPath(); ctx.roundRect(-p.w * 0.5, -p.h * 0.22, p.w * 1.1, p.h * 0.22, 8); ctx.fill();
+      ctx.strokeStyle = 'rgba(20,30,14,0.9)'; ctx.lineWidth = 3; ctx.stroke();
+      ctx.beginPath(); ctx.arc(p.w * 0.62, -p.h * 0.1, p.w * 0.26, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  }
+  // 漂浮文字
+  ctx.font = 'bold 14px "Microsoft YaHei", sans-serif';
+  ctx.textAlign = 'center';
+  for (const t of texts) {
+    const sx = t.x - cam.x + VW / 2;
+    ctx.globalAlpha = clamp(t.life / t.max, 0, 1);
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillText(t.txt, sx + 1, t.y + 1);
+    ctx.fillStyle = t.col;
+    ctx.fillText(t.txt, sx, t.y);
+  }
+  ctx.globalAlpha = 1;
+}
+function drawHUD() {
+  ctx.textAlign = 'left';
+  // HP
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(18, 16, 250, 64);
+  ctx.font = 'bold 12px "Microsoft YaHei", sans-serif';
+  ctx.fillStyle = '#cfd6c8';
+  ctx.fillText('生命', 30, 34);
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(30, 40, 220, 13);
+  const pct = clamp(player.hp / player.maxHp, 0, 1);
+  ctx.fillStyle = pct > 0.5 ? '#5aa04a' : pct > 0.25 ? '#c0902a' : '#c0392b';
+  ctx.fillRect(30, 40, 220 * pct, 13);
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1;
+  ctx.strokeRect(30.5, 40.5, 219, 12);
+  ctx.fillStyle = '#e8c559';
+  ctx.fillText('金币 $' + player.cash, 30, 72);
+  // 蝙蝠
+  for (let i = 0; i < player.bats; i++) {
+    ctx.fillStyle = '#b48ae0';
+    ctx.beginPath();
+    ctx.arc(170 + i * 20, 68, 6, 0, TAU); ctx.fill();
+    ctx.fillRect(163 + i * 20, 64, 14, 3);
+  }
+  // 武器
+  const w = curWeapon();
+  ctx.textAlign = 'right';
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(VW - 320, VH - 78, 302, 62);
+  ctx.fillStyle = '#d9e2cf';
+  ctx.font = 'bold 14px "Microsoft YaHei", sans-serif';
+  ctx.fillText(w.def.name, VW - 36, VH - 54);
+  ctx.font = 'bold 24px "Microsoft YaHei", sans-serif';
+  const infAmmo = !Number.isFinite(w.ammo);   // 冷兵器 / 飞镖 都是 ∞
+  ctx.fillStyle = !infAmmo && w.ammo <= 0 ? '#c0392b' : '#e8e2c8';
+  ctx.fillText(infAmmo ? '∞' : Math.floor(w.ammo), VW - 36, VH - 26);
+  // 槽位
+  ctx.textAlign = 'center';
+  // 固定显示 3 个槽位，空槽画成暗的
+  for (let i = 0; i < SLOTS; i++) {
+    const sx = VW - 286 + i * 55, sy = VH - 118;
+    const sw = player.weapons[i];
+    const on = i === player.slot && sw;
+    ctx.fillStyle = on ? 'rgba(90,110,70,0.9)' : 'rgba(0,0,0,0.5)';
+    ctx.fillRect(sx, sy, 48, 32);
+    ctx.strokeStyle = on ? '#9ab87a' : 'rgba(255,255,255,0.2)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(sx + 0.5, sy + 0.5, 47, 31);
+    ctx.fillStyle = !sw ? 'rgba(125,138,118,0.3)' : (on ? '#e8e2c8' : '#7d8a76');
+    ctx.font = 'bold 11px "Microsoft YaHei", sans-serif';
+    ctx.fillText(String(i + 1), sx + 10, sy + 20);
+    ctx.font = '10px "Microsoft YaHei", sans-serif';
+    ctx.fillText(sw ? sw.def.name.slice(0, 3) : '—', sx + 30, sy + 20);
+  }
+  // 顶部：推进进度（到栅栏的距离）+ 击杀 + 金币
+  const prog = clamp(player.x / G.fenceX, 0, 1);
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.fillRect(VW / 2 - 160, 14, 320, 54);
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 12px "Microsoft YaHei", sans-serif';
+  ctx.fillStyle = G.cleared ? '#9fe8a8' : '#cfd6c8';
+  ctx.fillText(G.cleared ? '已抵达安全区' : '推向栅栏', VW / 2 - 118, 33);
+  const bx = VW / 2 - 56, bw = 200;
+  ctx.fillStyle = 'rgba(255,255,255,0.12)';
+  ctx.fillRect(bx, 25, bw, 10);
+  ctx.fillStyle = G.cleared ? '#6ad07a' : '#c8a24a';
+  ctx.fillRect(bx + 1, 26, Math.max(0, (bw - 2) * prog), 8);
+  ctx.fillStyle = '#e8e2c8';
+  ctx.fillRect(bx + (bw - 4) * prog, 21, 3, 18);            // 玩家的位置标记
+  ctx.fillStyle = G.cleared ? '#6ad07a' : '#8a9682';
+  ctx.fillRect(bx + bw - 2, 20, 3, 20);                     // 右端 = 栅栏
+  ctx.font = '11px "Microsoft YaHei", sans-serif';
+  ctx.fillStyle = '#8a9682';
+  ctx.fillText('击杀 ' + player.kills + '   ·   $' + player.cash, VW / 2, 57);
+  // 门提示
+  if (G.state === 'play' && !player.inside) {
+    const h = nearDoorHouse();
+    if (h && h.type === 'safe') {
+      ctx.font = 'bold 13px "Microsoft YaHei", sans-serif';
+      ctx.fillStyle = '#9fe8a8';
+      ctx.fillText('[ ↑ ] 跳进屋 · 僵尸打不到你', VW / 2, GROUND - 130);
+    }
+  }
+  // 屏幕外僵尸箭头
+  for (const z of zombies) {
+    const sx = z.x - cam.x + VW / 2;
+    if (sx > -40 && sx < VW + 40) continue;
+    const left = sx <= 0;
+    const ax = left ? 26 : VW - 26;
+    const col = z.type === 'giant' ? '#e07a3a' : '#d0402a';
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    if (left) { ctx.moveTo(ax - 12, 330); ctx.lineTo(ax + 8, 318); ctx.lineTo(ax + 8, 342); }
+    else { ctx.moveTo(ax + 12, 330); ctx.lineTo(ax - 8, 318); ctx.lineTo(ax - 8, 342); }
+    ctx.closePath(); ctx.fill();
+    ctx.font = 'bold 11px "Microsoft YaHei", sans-serif';
+    ctx.fillStyle = col;
+    ctx.textAlign = left ? 'left' : 'right';
+    ctx.fillText(z.type === 'giant' ? '巨型!' : Math.round(Math.abs(z.x - player.x)) + 'm', left ? 14 : VW - 14, 360);
+  }
+  // 横幅
+  if (G.bannerT > 0) {
+    const a = clamp(G.bannerT / 2.5, 0, 1);
+    ctx.globalAlpha = Math.min(1, a * 2.2);
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 42px "Microsoft YaHei", sans-serif';
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillText(G.banner, VW / 2 + 3, 180 + 3);
+    ctx.fillStyle = '#e0d8c0';
+    ctx.fillText(G.banner, VW / 2, 180);
+    ctx.globalAlpha = 1;
+  }
+  // 朝向指示（替代原来的鼠标准星）：脚下的箭头指出枪口方向
+  const fx = player.x - cam.x + VW / 2;
+  const fy = GROUND + 14;
+  ctx.fillStyle = 'rgba(230,240,220,0.5)';
+  ctx.beginPath();
+  ctx.moveTo(fx + player.facing * 20, fy);
+  ctx.lineTo(fx + player.facing * 7, fy - 6);
+  ctx.lineTo(fx + player.facing * 7, fy + 6);
+  ctx.closePath(); ctx.fill();
+}
+function drawNight() {
+  const m = G.map || MAPS[0];
+  if (m.blind) {
+    // 地铁隧道：只看得清玩家周围一小圈。跳跃和声音就是你的第二双眼睛。
+    const px = clamp(player.x - cam.x + VW / 2, -200, VW + 200);
+    const py = clamp(GROUND - player.z - 44, -100, VH);
+    const g = ctx.createRadialGradient(px, py, 34, px, py, 410);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(0.5, 'rgba(0,0,0,0.55)');
+    g.addColorStop(1, 'rgba(0,0,0,0.95)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, VW, VH);
+  } else {
+    const v = ctx.createRadialGradient(VW / 2, VH / 2, VH * 0.44, VW / 2, VH / 2, VH * 0.85);
+    v.addColorStop(0, 'rgba(0,0,10,0)');
+    v.addColorStop(1, `rgba(0,0,10,${clamp(m.fogAmt * 1.6, 0.2, 0.75)})`);
+    ctx.fillStyle = v;
+    ctx.fillRect(0, 0, VW, VH);
+  }
+  if (G.hurtT > 0) {
+    ctx.fillStyle = `rgba(140,10,5,${G.hurtT * 0.5})`;
+    ctx.fillRect(0, 0, VW, VH);
+  }
+}
+function draw() {
+  ctx.save();
+  const shx = rand(-G.shake, G.shake), shy = rand(-G.shake, G.shake) * 0.6;
+  ctx.translate(Math.round(shx), Math.round(shy));
+  drawSky();
+  for (const h of houses) drawHouse(h);
+  drawStreet();
+  drawFloors();
+  drawProps();
+  drawHazards();
+  drawFence();
+  drawShelf();
+  drawEntities();
+  drawZProj();
+  drawNight();
+  ctx.restore();
+  drawHUD();
+}
+
+// ============================== 存档 ==============================
+// 单一持久钱包：player.cash 是 S.cash 的访问器（见 resetGame），
+// 所以打到的钱直接进存档、关卡失败也保留，不存在"本局钱 vs 存档钱"两本账。
+const SAVE_KEY = 'zv2_save';
+function defaultSave() {
+  return {
+    v: 1, cash: 50,
+    owned: { bat: 1 },                 // 武器 id → 等级(1-3)，永久持有
+    slots: ['bat', null, null],        // 3 个装备槽
+    perkLv: {}, perkSlots: [null, null, null],
+    chars: { hank: true }, curChar: 'hank',
+    companionLv: 0,
+    unlocked: 1,                       // 已解锁关卡数
+    cleared: {},                       // 关卡号 → { stars, bestKills }
+    infected: false,
+    ach: {}, seen: { w: {}, z: {} },
+    tut: {},
+    stats: { kills: 0, crits: 0, deaths: 0, levelsCleared: 0, propBreaks: 0, housesLost: 0 },
+    cfg: { mute: false, music: true },
+    level: 1,
+  };
+}
+let S = defaultSave();
+function loadSave() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (raw) {
+      const o = JSON.parse(raw);
+      S = Object.assign(defaultSave(), o);
+      S.stats = Object.assign(defaultSave().stats, o.stats || {});
+    }
+  } catch (e) { S = defaultSave(); }
+}
+function writeSave() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
+
+// ============================== 武器图标 ==============================
+// 全部程序化绘制后转 dataURL 缓存 —— 不引入任何图片文件。
+const ICON_CACHE = {};
+function weaponIcon(id, lv) {
+  const key = id + ':' + (lv || 0);
+  if (ICON_CACHE[key] !== undefined) return ICON_CACHE[key];
+  let url = '';
+  try {
+    const c = document.createElement('canvas');
+    c.width = 132; c.height = 60;
+    const g = c.getContext('2d');
+    const d = Object.assign({}, WEAPONS[id], WEAPONS[id].lv[(lv || 1) - 1] || {});
+    const col = d.col || '#333', acc = d.accent || '#8a8a90';
+    const L = (d.L || 30) * 1.7;
+    g.translate(66, 30);
+    g.lineJoin = 'round';
+    const box = (x, y, w, h, c2) => { g.fillStyle = c2 || col; g.fillRect(x, y, w, h); };
+    switch (d.shape) {
+      case 'club': case 'machete': case 'sword':
+        box(-8 - 22, -4, 24, 8, '#5a3a22');            // 柄
+        box(-10, -3.5, L, 7);                           // 刃/棍身
+        box(L - 10, -5.5, 10, 11, acc);                 // 前端加重
+        break;
+      case 'axe':
+        box(-8 - 24, -3.5, 26, 7, '#5a3a22');
+        box(-8, -3, 34, 6);
+        g.fillStyle = acc;                              // 斧头
+        g.beginPath(); g.moveTo(10, -16); g.lineTo(30, -6); g.lineTo(30, 6); g.lineTo(10, 16);
+        g.closePath(); g.fill();
+        break;
+      case 'saw':
+        box(-38, -7, 30, 14, '#5a3a22');
+        box(-12, -8, 40, 16);
+        box(4, -12, 26, 6, '#c8ccd4');
+        g.fillStyle = '#2a2a30';
+        for (let i = 0; i < 7; i++) g.fillRect(0 + i * 4, -14, 2, 4);
+        break;
+      case 'shovel':
+        box(-42, -3, 40, 6, '#5a3a22');
+        box(-4, -10, 24, 20, acc);
+        break;
+      case 'dart':
+        g.fillStyle = col;
+        g.beginPath(); g.moveTo(26, 0); g.lineTo(-8, -10); g.lineTo(-8, 10); g.closePath(); g.fill();
+        g.fillStyle = acc; g.fillRect(-14, -3, 10, 6);
+        break;
+      case 'pistol':
+        box(-18, -9, 44, 12); box(-13, 0, 12, 20);
+        break;
+      case 'smg':
+        box(-26, -9, 52, 13); box(-7, 3, 12, 18); box(16, 3, 8, 15, acc);
+        break;
+      case 'shotgun':
+        box(-44, -7, 88, 9);
+        box(-44, -2, 28, 13, '#5a3a22');
+        break;
+      case 'revolver':
+        box(-16, -9, 40, 12);
+        g.fillStyle = '#8a8a90'; g.beginPath(); g.arc(-4, 0, 11, 0, TAU); g.fill();
+        box(-16, 0, 11, 20);
+        break;
+      case 'minigun':
+        box(-18, -13, 44, 26);
+        g.fillStyle = '#2a2a30'; for (let i = 0; i < 4; i++) g.fillRect(26, -11 + i * 6, 20, 4);
+        box(-6, 10, 14, 16, '#5a3a22');
+        break;
+      case 'rpg':
+        box(-46, -10, 92, 20);
+        box(24, -12, 16, 24, acc);
+        break;
+      case 'flamer':
+        box(-34, -9, 56, 15);
+        box(-18, 4, 13, 20, '#5a3a22');
+        box(22, -14, 12, 20, acc);
+        break;
+      case 'energy': default:
+        box(-38, -10, 72, 20);
+        box(-16, -5, 30, 10, acc);
+        g.fillStyle = acc; g.beginPath(); g.arc(32, 0, 9, 0, TAU); g.fill();
+        break;
+    }
+    url = c.toDataURL();
+  } catch (e) { url = ''; }
+  ICON_CACHE[key] = url;
+  return url;
+}
+
+// ============================== 货架商店 ==============================
+// 纯键盘驱动：←→ 选物品，↑↓ 切分类，Enter 买/升级，U 撤销。
+const SH = { cat: 0, idx: 0, undo: [] };
+const CAT_KEYS = ['melee', 'gun', 'scifi'];
+function shelfItems() { return WEP_ORDER.filter(id => WEAPONS[id].cat === CAT_KEYS[SH.cat]); }
+
+function openShelf() {
+  SH.cat = 0; SH.idx = 0; SH.undo.length = 0;
+  G.state = 'shelf';
+  renderShelf();
+  show('shelf');
+  SFX.buy();
+}
+function closeShelf() {
+  hide('shelf');
+  G.state = 'play';
+  winLevel();          // 关掉货架 = 本关结束 → 结算
+}
+function renderShelf() {
+  document.getElementById('shelfCash').textContent = '金币 $' + S.cash;
+  document.getElementById('shelfTabs').innerHTML = CAT_KEYS.map((k, i) =>
+    `<div class="tab ${i === SH.cat ? 'on' : ''}">${CAT_NAME[k]}</div>`).join('');
+
+  const items = shelfItems();
+  SH.idx = clamp(SH.idx, 0, Math.max(0, items.length - 1));
+  document.getElementById('shelfRack').innerHTML = items.map((id, i) => {
+    const d = WEAPONS[id];
+    const lv = S.owned[id] || 0;
+    const st = lv ? Object.assign({}, d, d.lv[lv - 1]) : d;
+    const name = st.name || d.name;
+    const ammo = d.melee ? '不耗弹' : (d.recover ? '回收' : (d.ammoType === 'cell' ? '能量' : '实弹'));
+    let pr, cls = '';
+    if (!lv) { pr = '购买 $' + d.price; cls = S.cash < d.price ? 'no' : ''; }
+    else if (lv < d.lv.length) { pr = '升级 $' + d.upCost[lv - 1]; cls = S.cash < d.upCost[lv - 1] ? 'no' : 'own'; }
+    else { pr = '已 满 级'; cls = 'own'; }
+    const icon = weaponIcon(id, lv || 1);
+    return `<div class="wcard ${i === SH.idx ? 'sel' : ''} ${lv >= d.lv.length ? 'max' : ''}">
+      <div class="icon">${icon ? `<img src="${icon}" alt="">` : '—'}</div>
+      <div class="nm">${name}</div>
+      <div class="st">伤害 ${st.dmg} · ${st.rate}s<br>${ammo}${lv ? ' · Lv' + lv : ''}</div>
+      <div class="pr ${cls}">${pr}</div></div>`;
+  }).join('');
+
+  document.getElementById('shelfSlots').innerHTML = '当前装备： ' + S.slots.map((id, i) =>
+    `<b>${i + 1}</b> ${id ? (WEAPONS[id].lv[(S.owned[id] || 1) - 1].name || WEAPONS[id].name) : '空'}`
+  ).join('   ');
+}
+function shelfNav(d) {
+  if (d === 'up' || d === 'down') {
+    SH.cat = (SH.cat + (d === 'up' ? -1 : 1) + CAT_KEYS.length) % CAT_KEYS.length;
+    SH.idx = 0;
+  } else {
+    const n = shelfItems().length;
+    SH.idx = (SH.idx + (d === 'left' ? -1 : 1) + n) % n;
+  }
+  SFX.swap();
+  renderShelf();
+}
+function shelfConfirm() {
+  const id = shelfItems()[SH.idx];
+  if (!id) return;
+  const d = WEAPONS[id];
+  const lv = S.owned[id] || 0;
+  if (!lv) {
+    if (S.cash < d.price) { toast('金币不够'); SFX.deny(); return; }
+    S.cash -= d.price;
+    S.owned[id] = 1;
+    SH.undo.push({ id, kind: 'buy', cost: d.price });
+    equipWeapon(id);
+  } else if (lv < d.lv.length) {
+    const cost = d.upCost[lv - 1];
+    if (S.cash < cost) { toast('金币不够'); SFX.deny(); return; }
+    S.cash -= cost;
+    S.owned[id] = lv + 1;
+    SH.undo.push({ id, kind: 'up', cost, from: lv });
+    const w = player.weapons.find(v => v.baseId === id);
+    if (w) upgradeWeapon(w);
+  } else { toast('已经满级了'); SFX.deny(); return; }
+  SFX.buy();
+  writeSave();
+  renderShelf();
+}
+function shelfUndo() {
+  const a = SH.undo.pop();
+  if (!a) { toast('没有可撤销的操作'); SFX.deny(); return; }
+  S.cash += a.cost;
+  if (a.kind === 'buy') {
+    delete S.owned[a.id];
+    const i = player.weapons.findIndex(w => w.baseId === a.id);
+    if (i >= 0) player.weapons.splice(i, 1);
+    for (let k = 0; k < S.slots.length; k++) if (S.slots[k] === a.id) S.slots[k] = null;
+    syncLoadout();
+  } else {
+    S.owned[a.id] = a.from;
+    const w = player.weapons.find(v => v.baseId === a.id);
+    if (w) { w.lv = a.from; refreshWeapon(w); }
+  }
+  SFX.swap();
+  writeSave();
+  renderShelf();
+}
+function shelfEquipSlot(i) {
+  const id = shelfItems()[SH.idx];
+  if (!id || !S.owned[id]) { toast('先购买才能装备'); SFX.deny(); return; }
+  S.slots[i] = id;
+  syncLoadout();
+  player.slot = Math.min(i, player.weapons.length - 1);
+  SFX.swap();
+  writeSave();
+  renderShelf();
+}
+// 把新买的武器放进空槽，槽满了就替换当前槽
+function equipWeapon(id) {
+  let i = S.slots.indexOf(null);
+  if (i < 0) i = clamp(player.slot, 0, S.slots.length - 1);
+  S.slots[i] = id;
+  syncLoadout();
+  player.slot = Math.min(i, player.weapons.length - 1);
+}
+// 从存档的 3 个槽位重建玩家手上的武器
+function syncLoadout() {
+  const ids = S.slots.filter(Boolean);
+  player.weapons = (ids.length ? ids : ['bat']).map(id => makeWeapon(id, S.owned[id] || 1));
+  player.slot = clamp(player.slot, 0, player.weapons.length - 1);
+}
+
+let toastT = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.opacity = 1;
+  clearTimeout(toastT);
+  toastT = setTimeout(() => { el.style.opacity = 0; }, 1600);
+}
+function show(id) { document.getElementById(id).classList.remove('hidden'); }
+function hide(id) { document.getElementById(id).classList.add('hidden'); }
+function togglePause() {
+  G.paused = !G.paused;
+  if (G.paused) show('pause'); else hide('pause');
+}
+
+// ============================== 关卡 / 地图 ==============================
+// 每张地图有独立的：天空色板、地面材质、路灯样式、可破坏物件池、路段组合、危险区数量。
+// skyKind: outdoor（户外，画天空+远景）/ tunnel（地铁洞壁）/ lab（室内墙面）
+// tex:    ground 的纹理画法   lamp: 路灯样式
+const MAPS = [
+  { n:1, name:'村庄小径', diff:'★', time:'黄昏 · 晴',
+    note:'教学关。地形平缓、房子多，先熟悉跳跃进屋和打碎道具补给。',
+    skyKind:'outdoor', sky:['#2a1a2e','#6b3328','#c8722f'], skyline:'#2a1e18', hills:true,
+    stars:0, moon:0, cloud:0, fogCol:'70,52,36', fogAmt:0.26,
+    ground:'#40372a', road:'#4e4232', tex:'dirt', lamp:'street', lampCol:'#ffd88a',
+    segs:['open','deck','deck','yard','clutter'], forceSeg:'deck', props:['grass','bush','pot','trash','crate','tomb','hay'],
+    hazards:0, blind:false },
+
+  { n:2, name:'玉米农场', diff:'★★', time:'正午 · 烈日',
+    note:'开阔、掩体少，僵尸从很远就能看见你。干草堆和玉米秆是唯一能挡子弹的东西。',
+    skyKind:'outdoor', sky:['#3f7fc4','#79b0dd','#cfe2ee'], skyline:'#4a6a3a', hills:true,
+    stars:0, moon:0, cloud:1, fogCol:'200,215,230', fogAmt:0.14,
+    ground:'#6b5a2e', road:'#7d6a38', tex:'dirt', lamp:'none',
+    segs:['open','open','clutter','deck','valley'], props:['corn','hay','grass','bush','crate'],
+    hazards:0, blind:false },
+
+  { n:3, name:'废弃公路', diff:'★★', time:'阴天',
+    note:'笔直的柏油路，卡车顶连成一线。视野极好，但也意味着没有遮蔽。',
+    skyKind:'outdoor', sky:['#4a4f57','#6b7078','#9aa0a6'], skyline:'#3a3e44', hills:true,
+    stars:0, moon:0, cloud:0, fogCol:'120,124,130', fogAmt:0.30,
+    ground:'#2e2e30', road:'#3a3a3c', tex:'asphalt', lamp:'street', lampCol:'#c8d0d8',
+    segs:['bridge','stack','open','corridor','clutter'], forceSeg:'stack', props:['carWreck','barrel','barrier','tire','trash','grass'],
+    hazards:0, blind:false },
+
+  { n:4, name:'加油站便利店', diff:'★★★', time:'深夜 · 霓虹',
+    note:'油罐会爆，别站在旁边开枪。霓虹灯是这片黑里唯一的坐标。',
+    skyKind:'outdoor', sky:['#080c1c','#141c34','#28304a'], skyline:'#121828', hills:true,
+    stars:1, moon:1, cloud:0, fogCol:'30,40,70', fogAmt:0.30,
+    ground:'#2a2a2e', road:'#34343a', tex:'asphalt', lamp:'neon', lampCol:'#ff6ab0',
+    segs:['corridor','block','clutter','deck','open'], props:['fuelTank','shelf','freezer','barrel','trash','crate','neon'],
+    hazards:1, blind:false },
+
+  { n:5, name:'镇上医院', diff:'★★★', time:'雨夜',
+    note:'长走廊 + 病房隔间，狭窄地形里近战比枪好用。医护兵就困在这里。',
+    skyKind:'outdoor', sky:['#0c1018','#161e2c','#243040'], skyline:'#0e1420', hills:true,
+    stars:0, moon:0, cloud:0, fogCol:'70,90,110', fogAmt:0.40, rain:1,
+    ground:'#3e4448', road:'#4a5054', tex:'tile', lamp:'fluorescent', lampCol:'#cfe8f0',
+    segs:['corridor','stack','block','towers','valley'], forceSeg:'stack', props:['bed','cabinet','trash','crate','glass'],
+    hazards:0, blind:false },
+
+  { n:6, name:'中学操场', diff:'★★★★', time:'清晨',
+    note:'跑道 + 双层教学楼。高台最多的一张图，跳上跳下的走位空间最大。',
+    skyKind:'outdoor', sky:['#5a4a7a','#a06a80','#e8a878'], skyline:'#4a3a52', hills:true,
+    stars:0, moon:0, cloud:1, fogCol:'200,170,170', fogAmt:0.18,
+    ground:'#8a3a34', road:'#9c443c', tex:'track', lamp:'street', lampCol:'#ffd0a0',
+    segs:['deck','stack','towers','stack','bridge','block'], forceSeg:'stack', props:['locker','desk','hoop','trash','crate','grass'],
+    hazards:0, blind:false },
+
+  { n:7, name:'警察局', diff:'★★★★', time:'夜 · 警灯',
+    note:'武器柜给弹药，拘留室给你躲避的空间。警灯一直在闪，注意别被晃花。',
+    skyKind:'outdoor', sky:['#0a0e1a','#141a2e','#20283c'], skyline:'#0e1220', hills:true,
+    stars:1, moon:0, cloud:0, fogCol:'30,40,70', fogAmt:0.30, siren:1,
+    ground:'#34383e', road:'#40444a', tex:'tile', lamp:'fluorescent', lampCol:'#dfe8f0',
+    segs:['corridor','block','corridor','deck','clutter'], props:['policeCar','locker','desk','trash','crate','barrier'],
+    hazards:0, blind:false },
+
+  { n:8, name:'军事检查站', diff:'★★★★★', time:'黎明',
+    note:'沙袋掩体阵 + 铁丝网。僵尸从两侧同时压过来，沙袋挡子弹也挡它们。',
+    skyKind:'outdoor', sky:['#1e2a3e','#4a5a6e','#c08a5a'], skyline:'#2a3444', hills:true,
+    stars:0, moon:0, cloud:0, fogCol:'110,120,140', fogAmt:0.28,
+    ground:'#6a5f48', road:'#79704f', tex:'sand', lamp:'none',
+    segs:['open','bridge','clutter','open','towers','block'], props:['sandbag','ammoBox','barrel','barrier','tire','grass'],
+    hazards:0, blind:false },
+
+  { n:9, name:'地铁隧道', diff:'★★★★★', time:'地下 · 无光',
+    note:'视野受限 —— 只能看清手电筒范围。声音是你的第二个眼睛。',
+    skyKind:'tunnel', sky:['#05070a','#0a0e14','#121820'], skyline:'#0a0e14', hills:false,
+    stars:0, moon:0, cloud:0, fogCol:'10,14,20', fogAmt:0.5,
+    ground:'#2a2c30', road:'#33353a', tex:'concrete', lamp:'fluorescent', lampCol:'#8fd0e0',
+    segs:['corridor','corridor','valley','clutter','bridge'], props:['bench','gate','trash','tire','crate'],
+    hazards:1, blind:true },
+
+  { n:10, name:'生化研究所', diff:'★★★★★★', time:'室内 · 冷白',
+    note:'最终关。培养舱、多层实验区，以及走廊尽头的病毒源头。',
+    skyKind:'lab', sky:['#0e1418','#161e24','#1e2a32'], skyline:'#131a20', hills:false,
+    stars:0, moon:0, cloud:0, fogCol:'20,30,40', fogAmt:0.35,
+    ground:'#3a4248', road:'#454e56', tex:'panel', lamp:'fluorescent', lampCol:'#a8e0ff',
+    segs:['stack','block','corridor','towers','deck','stack'], forceSeg:'stack', props:['pod','labTable','sample','cabinet','crate','tire'],
+    hazards:1, blind:false },
+];
+
+// ============================== 路段库 ==============================
+// 关卡 =【头段·固定】+【中段·从地图的 segs 里随机抽】+【尾段·固定（栅栏+货架）】
+// floors 决定高台形态 —— 每张地图的 segs 组合决定了它的"地形性格"。
+const SEGMENTS = {
+  open:    { name:'开阔地', w:[820, 1080], floors:'none',   props:1.2, houses:0 },   // 无高台，纯走位
+  deck:    { name:'双层',   w:[1000,1400], floors:'one',    props:1.0, houses:1 },   // 一块高台 + 一栋房
+  stack:   { name:'叠层',   w:[1100,1500], floors:'stack',  props:1.0, houses:0 },   // 高台上再叠一层
+  yard:    { name:'场院',   w:[1000,1300], floors:'single', props:1.5, houses:1 },   // 一块大高台，道具多
+  valley:  { name:'凹地',   w:[900, 1200], floors:'valley', props:1.1, houses:0 },   // 两侧高中间低
+  bridge:  { name:'天桥',   w:[1200,1700], floors:'bridge', props:0.8, houses:0 },   // 一条长高台贯穿
+  corridor:{ name:'走廊',   w:[900, 1300], floors:'none',   props:0.7, houses:2 },   // 窄，房间多
+  clutter: { name:'杂物堆', w:[800, 1100], floors:'none',   props:2.2, houses:0 },   // 满是可打碎的物件
+  towers:  { name:'双塔',   w:[1000,1400], floors:'towers', props:0.9, houses:0 },   // 两块窄而高的台子
+  block:   { name:'街区',   w:[1200,1600], floors:'one',    props:1.3, houses:2 },   // 房子密集
+};
+const LEVELS = MAPS;   // 兼容旧名字
+
+// ============================== 流程 ==============================
+const STAR_KILLS = 120;          // 拿"击杀达标"那颗星的门槛
+// ⚠ 测试阶段开关：所有关卡直接解锁，方便逐张审核地图。
+// 改成 false 就恢复"逐关解锁"。
+const TEST_UNLOCK_ALL = true;
+const isLocked = n => !TEST_UNLOCK_ALL && n > S.unlocked;
+
+function resetGame() {
+  player = {
+    x: 260, z: 0, vz: 0, vx: 0, kb: 0, w: 26, h: 74,
+    hp: 100, maxHp: 100, aim: 0, facing: 1, weapons: [], slot: 0,
+    kills: 0, bats: 0, invuln: 0, walkT: 0, swingT: 0,
+    inside: null, onGround: true, floor: null,
+  };
+  player.y = () => GROUND - player.z;
+  // 单一持久钱包：player.cash 是 S.cash 的访问器。打到的钱直接进存档，
+  // 关卡失败也保留 —— 不存在"本局钱 vs 存档钱"两本账。
+  Object.defineProperty(player, 'cash', {
+    get: () => S.cash,
+    set: v => { S.cash = Math.max(0, Math.round(v)); },
+    configurable: true,
+  });
+  syncLoadout();
+  zombies = []; bullets = []; parts = []; coins = []; texts = []; decals = []; arcs = []; items = []; props = [];
+  zprojs = []; hazards = [];
+  G.time = 0; G.spawnT = 0;
+  G.hurtT = 0; G.shake = 0; G.bannerT = 0; G.flashT = 0; G.paused = false; G.groanT = 3;
+  // buildLevel 负责：铺路段、摆高台和房屋、撒物件、地图自带危险区，
+  // 以及算好关卡长度 / 栅栏位置 / 货架位置
+  buildLevel(MAPS[clamp((G.wave || 1) - 1, 0, MAPS.length - 1)]);
+  player.floor = floors[0];
+  cam = { x: clamp(player.x, VW / 2, WORLD_W - VW / 2) };
+}
+function startLevel(n) {
+  initAudio();
+  if (AC && AC.state === 'suspended') AC.resume();
+  S.level = n;
+  G.wave = n;
+  resetGame();
+  hide('menu'); hide('shelf'); hide('result'); hide('pause'); hide('levels');
+  G.state = 'play';
+  // 本关首次登场的新敌人会写在开场横幅里
+  const nw = newTypesAt(n).filter(id => !ZTYPES[id].boss).map(id => ZTYPES[id].name);
+  G.banner = `第 ${n} 关 · ${LEVELS[n - 1] ? LEVELS[n - 1].name : ''}` +
+             (nw.length ? ` · 新敌人：${nw.join('、')}` : '');
+  G.bannerT = nw.length ? 4.2 : 3.2;
+  writeSave();
+  SFX.wave();
+}
+// 星级：★ 活着走到栅栏　★ 击杀达标　★ 生命过半
+function starsFor() {
+  let s = 1;
+  if (player.kills >= STAR_KILLS) s++;
+  if (player.hp > player.maxHp * 0.5) s++;
+  return s;
+}
+function winLevel() {
+  const n = G.wave;
+  const stars = starsFor();
+  S.stats.levelsCleared++;
+  S.stats.kills += player.kills;
+  const prev = S.cleared[n];
+  if (!prev || stars > prev.stars) S.cleared[n] = { stars, bestKills: player.kills };
+  else prev.bestKills = Math.max(prev.bestKills || 0, player.kills);
+  S.unlocked = Math.max(S.unlocked, Math.min(LEVELS.length, n + 1));
+  writeSave();
+  showResult(true, stars);
+}
+function loseLevel() {
+  S.stats.deaths++;
+  S.stats.kills += player.kills;
+  writeSave();
+  showResult(false, 0);
+}
+function showResult(win, stars) {
+  G.state = 'result';
+  const n = G.wave;
+  const t = document.getElementById('resTitle');
+  t.textContent = win ? '通 关' : '你 被 吃 掉 了';
+  t.style.color = win ? '#9fe8a8' : '#c0392b';
+  document.getElementById('resStars').innerHTML = win
+    ? `第 ${n} 关 · ${LEVELS[n - 1] ? LEVELS[n - 1].name : ''}` : '';
+  document.getElementById('resStars').innerHTML = win
+    ? [0, 1, 2].map(i => i < stars ? '<b>★</b>' : '★').join(' ') : '★ ★ ★';
+  document.getElementById('resStats').innerHTML =
+    `击杀 <b>${player.kills}</b> 只 &nbsp;·&nbsp; 金币 <b>$${S.cash}</b><br>` +
+    (win
+      ? (player.kills >= STAR_KILLS ? '✔ 击杀达标' : `✘ 击杀 ${player.kills} / ${STAR_KILLS}`) + ' &nbsp; ' +
+        (player.hp > player.maxHp * 0.5 ? '✔ 生命过半' : '✘ 生命不足一半')
+      : '金币已全部保留，可直接升级装备再战');
+  document.getElementById('resNextBtn').style.display = (win && n < LEVELS.length) ? '' : 'none';
+  show('result');
+}
+function openLevels() {
+  hide('menu'); hide('result'); hide('shelf'); hide('pause');
+  renderLevels();
+  show('levels');
+  G.state = 'menu';
+}
+function renderLevels() {
+  document.getElementById('lvCash').innerHTML = '金币 $' + S.cash
+    + (TEST_UNLOCK_ALL ? ' &nbsp;<span style="color:#d08a5a;font-size:13px">测试模式：全部关卡已解锁</span>' : '');
+  const grid = document.getElementById('lvGrid');
+  grid.innerHTML = MAPS.map(L => {
+    const lock = isLocked(L.n);
+    const c = S.cleared[L.n];
+    const nw = newTypesAt(L.n).filter(id => !ZTYPES[id].boss).map(id => ZTYPES[id].name);
+    const boss = newTypesAt(L.n).some(id => ZTYPES[id].boss);
+    return `<div class="lv ${lock ? 'lock' : ''}" data-lv="${L.n}">
+      <div class="no">第 ${L.n} 关 · ${L.time}</div>
+      <div class="nm">${L.name}</div>
+      <div class="df">感染等级 ${L.diff}</div>
+      <div class="nt">${L.note}</div>
+      <div class="st">${c ? '★'.repeat(c.stars) + '☆'.repeat(3 - c.stars) : '☆☆☆'}
+        <span class="rc">${lock ? '未解锁' : (c ? '最佳击杀 ' + c.bestKills : '未通关')}</span></div>
+      ${nw.length ? `<div class="nw">新敌人：${nw.join('、')}</div>` : ''}
+      ${boss ? `<div class="boss">☠ 最终 Boss</div>` : ''}</div>`;
+  }).join('');
+  grid.querySelectorAll('.lv').forEach(el => {
+    el.addEventListener('click', () => {
+      const n = +el.dataset.lv;
+      if (isLocked(n)) { toast('还没解锁 —— 先打通第 ' + S.unlocked + ' 关'); SFX.deny(); return; }
+      startLevel(n);
+    });
+  });
+}
+
+document.getElementById('startBtn').addEventListener('click', openLevels);
+document.getElementById('resNextBtn').addEventListener('click', () => startLevel(Math.min(LEVELS.length, G.wave + 1)));
+document.getElementById('resMenuBtn').addEventListener('click', openLevels);
+document.getElementById('shelfDoneBtn').addEventListener('click', closeShelf);
+(function initMenu() {
+  loadSave();
+  const done = Object.keys(S.cleared).length;
+  document.getElementById('menuHs').textContent = done
+    ? `已通关 ${done} / ${LEVELS.length} 关 · 金币 $${S.cash}`
+    : `金币 $${S.cash} · 从第 1 关开始`;
+})();
+
+// ============================== 主循环 ==============================
+let last = performance.now();
+function loop(t) {
+  const dt = Math.min(0.05, (t - last) / 1000);
+  last = t;
+  if (G.state === 'play' && !G.paused) update(dt);
+  for (const k in pressed) delete pressed[k];   // 清空按键边沿量（必须在 update 之后）
+  if (G.state !== 'menu') draw();
+  else {
+    ctx.fillStyle = '#0a0d08';
+    ctx.fillRect(0, 0, VW, VH);
+    cam.x = WORLD_W / 2;
+    drawSky();
+    for (const h of houses) drawHouse(h);
+    drawStreet();
+    drawFloors();
+    drawProps();
+    drawFence();
+    drawShelf();
+    drawNight();
+  }
+  requestAnimationFrame(loop);
+}
+resetGame();
+requestAnimationFrame(loop);
+
+// 测试钩子
+window.__tg = {
+  start: () => startLevel(G.wave || 1),
+  state: () => G.state,
+  wave: () => G.wave,
+  spawn: t => spawnZombie(t),
+  // step 直接驱动一帧，并像 loop() 那样清空按键边沿量
+  step: dt => { update(dt); for (const k in pressed) delete pressed[k]; },
+  player: () => player,
+  zombies: () => zombies,
+  bullets: () => bullets,
+  items: () => items,
+  coins: () => coins,
+  parts: () => parts,
+  cam: () => cam,
+  houses: () => houses,
+  props: () => props,
+  damageHouse: (h, d) => damageHouse(h, d),
+  damageProp: (p, d) => { const i = props.indexOf(p); if (i >= 0) damageProp(p, i, d); },
+  next: () => startWave(G.wave + 1),
+  waveClear: () => { zombies.length = 0; G.state = 'play'; },
+  fenceX: () => G.fenceX,
+  shelfX: () => G.shelfX,
+  pickType: (p, lv) => pickZombieType(p, lv),
+  // —— 地图 / 路段查询（给测试用）——
+  maps: () => MAPS,
+  mapCount: () => MAPS.length,
+  mapAt: n => (MAPS[n - 1] || {}).name,
+  timeAt: n => (MAPS[n - 1] || {}).time,
+  noteAt: n => (MAPS[n - 1] || {}).note,
+  skyAt: n => (MAPS[n - 1] || {}).sky || [],
+  texAt: n => (MAPS[n - 1] || {}).tex,
+  lampAt: n => (MAPS[n - 1] || {}).lamp,
+  skyKindAt: n => (MAPS[n - 1] || {}).skyKind,
+  propPoolAt: n => (MAPS[n - 1] || {}).props || [],
+  segPoolAt: n => (MAPS[n - 1] || {}).segs || [],
+  blindAt: n => !!(MAPS[n - 1] || {}).blind,
+  rainAt: n => (MAPS[n - 1] || {}).rain || 0,
+  sirenAt: n => (MAPS[n - 1] || {}).siren || 0,
+  propKinds: () => PROP_KINDS,
+  segDefs: () => SEGMENTS,
+  isLocked: n => isLocked(n),
+  curMap: () => G.map,
+  newTypesAt: n => newTypesAt(n),
+  zprojs: () => zprojs,
+  hazards: () => hazards,
+  ztypes: () => ZTYPES,
+  cleared: () => G.cleared,
+  result: () => ({ state: G.state, els: {} }),
+  stars: () => starsFor(),
+  save: () => S,
+  openShelf: () => openShelf(),
+  shelf: () => SH,
+  shelfNav: d => shelfNav(d),
+  shelfConfirm: () => shelfConfirm(),
+  shelfUndo: () => shelfUndo(),
+  shelfEquip: i => shelfEquipSlot(i),
+  next: () => { G.wave = Math.min(LEVELS.length, G.wave + 1); resetGame(); G.state = 'play'; },
+  startLevel: n => startLevel(n),
+  winLevel: () => winLevel(),
+  loseLevel: () => loseLevel(),
+  setState: s => { G.state = s; },
+  // 驱动一整帧（含绘制），用来冒烟测试渲染管线
+  frame: t => loop(t),
+  // 关掉遗留的波次清场逻辑（它会每帧重置安全屋状态）。距离刷怪系统上线后就不需要了。
+  noWave: () => { G.noWave = true; },
+  // —— 键盘模拟 ——
+  hold: c => { keys[c] = true; },                  // 按住（电平）
+  release: c => { keys[c] = false; },              // 松开
+  tap: c => { keys[c] = true; pressed[c] = true; },// 点一下（边沿）
+  // —— 便利方法 ——
+  giveWeapons: ids => { player.weapons = ids.map(id => makeWeapon(id)); player.slot = 0; },
+  place: (x, z) => {
+    player.x = x; player.z = z || 0;
+    player.vz = 0; player.onGround = true;
+    player.floor = floorAt(player.x, player.z + 1) || floors[0];
+  },
+  // —— 多层地形 ——
+  floors: () => floors,
+  addFloor: (x0, x1, z) => { const f = { x0, x1, z }; floors.push(f); return f; },
+  clearFloors: () => { floors = [{ x0: 0, x1: WORLD_W, z: 0, base: true }]; },
+  spawnAt: (t, x, z) => {
+    spawnZombie(t);
+    const zz = zombies[zombies.length - 1];
+    zz.x = x; zz.z = z || 0;
+    return zz;
+  },
+};
+</script>
+</body>
+</html>

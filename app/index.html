@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>僵尸村庄 Zombie Village</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:100%; height:100%; overflow:hidden; background:#000; }
+  body { font-family:"Microsoft YaHei", "PingFang SC", sans-serif; color:#e8e2d0; }
+  #game { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); cursor:none; image-rendering:auto; }
+  .ov {
+    position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:rgba(6,8,6,0.85); z-index:10; text-align:center; user-select:none;
+  }
+  .hidden { display:none; }
+  h1.title { font-size:56px; letter-spacing:14px; color:#b6c2b0; text-shadow:0 0 26px rgba(160,30,30,0.7), 0 3px 0 #000; }
+  h1.title span { color:#c0392b; }
+  .sub { color:#7d8a76; letter-spacing:6px; margin:6px 0 26px; font-size:14px; }
+  .controls {
+    background:rgba(20,26,18,0.75); border:1px solid #38452f; border-radius:6px;
+    padding:16px 34px; margin-bottom:26px; font-size:13px; line-height:2.1; color:#aab5a2; text-align:left;
+  }
+  .controls b { color:#d3ddc9; }
+  .btn {
+    background:#2a3423; color:#d9e2cf; border:1px solid #4a5a3c; border-radius:4px;
+    font-family:inherit; font-size:17px; letter-spacing:4px; padding:13px 42px; cursor:pointer; transition:all .15s;
+  }
+  .btn:hover { background:#3a4a2f; border-color:#7a9a5c; box-shadow:0 0 18px rgba(120,160,90,0.35); }
+  .btn.red { background:#4a1f1c; border-color:#7c352e; }
+  .btn.red:hover { background:#6a2a24; box-shadow:0 0 18px rgba(200,60,50,0.4); }
+  .hs { margin-top:20px; color:#6b7a63; font-size:13px; letter-spacing:2px; }
+  #shop { justify-content:flex-start; padding-top:4vh; overflow-y:auto; }
+  #shop h2 { font-size:26px; letter-spacing:8px; color:#c9d4c0; }
+  #shop .cash { color:#e8c559; font-size:18px; margin:4px 0 14px; letter-spacing:2px; }
+  .grid { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; max-width:900px; margin-bottom:20px; }
+  .card {
+    width:200px; background:rgba(24,30,20,0.92); border:1px solid #3c4a30; border-radius:6px;
+    padding:11px 13px; cursor:pointer; transition:all .12s; text-align:left;
+  }
+  .card:hover { border-color:#8aa46a; background:rgba(36,46,28,0.95); transform:translateY(-2px); }
+  .card.dis { opacity:0.38; cursor:not-allowed; }
+  .card.dis:hover { border-color:#3c4a30; transform:none; }
+  .card .nm { color:#d9e2cf; font-size:14px; margin-bottom:4px; }
+  .card .ds { color:#8a9682; font-size:11px; line-height:1.6; min-height:34px; }
+  .card .pr { color:#e8c559; font-size:14px; margin-top:7px; }
+  .card .pr.owned { color:#7a9a5c; }
+  #toast {
+    position:fixed; top:13%; left:50%; transform:translateX(-50%); z-index:20;
+    background:rgba(40,12,10,0.92); border:1px solid #8c352c; color:#f0c9c2;
+    padding:9px 26px; border-radius:4px; letter-spacing:2px; font-size:14px;
+    opacity:0; transition:opacity .25s; pointer-events:none;
+  }
+  #over h1 { font-size:48px; letter-spacing:10px; color:#c0392b; margin-bottom:12px; text-shadow:0 0 22px rgba(190,40,30,0.55); }
+  #over .stats { font-size:15px; line-height:2.1; color:#aab5a2; margin-bottom:22px; }
+  #over .stats b { color:#e0e8d8; }
+  #pause h2 { font-size:32px; letter-spacing:10px; color:#c9d4c0; margin-bottom:8px; }
+  #pause p { color:#7d8a76; font-size:13px; letter-spacing:2px; }
+  #pause .pstats { color:#aab5a2; font-size:14px; line-height:1.9; margin:6px 0 22px; text-align:center; letter-spacing:1px; }
+  #pause .pstats b { color:#e8c559; }
+  #pause .pbtns { display:flex; flex-direction:column; gap:11px; margin-bottom:20px; }
+  #pause .pbtns .btn { width:280px; padding:12px 0; font-size:15px; letter-spacing:5px; }
+  #pause .hintbar { margin-bottom:0; }
+  /* ── 货架商店 ── */
+  #shelf, #levels { justify-content:flex-start; padding-top:4.5vh; overflow-y:auto; }
+  #shelf h2, #levels h2 { font-size:26px; letter-spacing:8px; color:#c9d4c0; }
+  #shelf .cash, #levels .cash { color:#e8c559; font-size:18px; margin:4px 0 14px; letter-spacing:2px; }
+  /* 感染模式开关：一个看起来像按钮的 span，接在金币后面 */
+  .infbtn { display:inline-block; padding:3px 12px; border-radius:14px; font-size:14px;
+            letter-spacing:1px; color:#7d8a76; background:rgba(0,0,0,0.35);
+            border:1.5px solid #3c4a30; cursor:pointer; user-select:none;
+            transition:background .15s, color .15s, border-color .15s; }
+  .infbtn:hover { color:#cfd6c8; border-color:#5a6a48; }
+  .infbtn.on { color:#ffdada; background:rgba(120,20,16,0.55); border-color:#c0392b;
+               box-shadow:0 0 14px rgba(192,57,43,0.5); }
+  .tabs { display:flex; gap:8px; margin-bottom:16px; }
+  .tab { background:rgba(20,26,18,0.8); border:1px solid #38452f; border-radius:4px;
+         padding:7px 22px; color:#8a9682; font-size:15px; letter-spacing:3px; }
+  .tab.on { background:#3a4a2f; border-color:#8aa46a; color:#e8e2c8; }
+  .rack { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; max-width:1180px; margin-bottom:16px; }
+  .wcard { width:140px; background:rgba(24,30,20,0.92); border:2px solid #3c4a30; border-radius:6px;
+           padding:9px 8px; text-align:center; transition:transform .1s, border-color .1s; }
+  .wcard.sel { border-color:#e8c559; background:rgba(50,46,26,0.96); transform:translateY(-5px) scale(1.06); }
+  .wcard.max { opacity:0.5; }
+  .wcard .icon { height:58px; display:flex; align-items:center; justify-content:center; margin-bottom:5px; }
+  .wcard .icon img { max-width:126px; max-height:58px; image-rendering:auto; }
+  .wcard .nm { color:#d9e2cf; font-size:13px; margin-bottom:3px; height:18px; overflow:hidden; }
+  .wcard .st { color:#8a9682; font-size:10px; line-height:1.55; height:32px; }
+  .wcard .pr { margin-top:6px; font-size:13px; color:#e8c559; }
+  .wcard .pr.own { color:#7a9a5c; }
+  .wcard .pr.no { color:#8c4038; }
+  .slotbar { color:#8a9682; font-size:13px; letter-spacing:2px; margin-bottom:12px; }
+  .slotbar b { color:#e8c559; }
+  .hintbar { color:#6b7a63; font-size:12px; letter-spacing:1px; margin-bottom:16px; }
+  .hintbar b { color:#c9d4c0; }
+  /* ── 结算 ── */
+  #result .stars { font-size:44px; letter-spacing:10px; margin:6px 0 18px; color:#3c4a30; }
+  #result .stars b { color:#e8c559; text-shadow:0 0 18px rgba(232,197,89,0.55); font-weight:normal; }
+  #result .stats { font-size:15px; line-height:2.1; color:#aab5a2; margin-bottom:22px; text-align:center; }
+  #result .stats b { color:#e0e8d8; }
+  #result .btn { margin: 0 6px; }
+  /* ── 关卡选择 ── */
+  #levels .lv { width:330px; background:rgba(24,30,20,0.94); border:2px solid #3c4a30;
+                border-radius:6px; padding:12px 14px; text-align:left; cursor:pointer; transition:all .12s; }
+  #levels .lv:hover { border-color:#8aa46a; transform:translateY(-3px); background:rgba(36,46,28,0.96); }
+  #levels .lv.lock { opacity:0.4; cursor:not-allowed; }
+  #levels .lv.lock:hover { border-color:#3c4a30; transform:none; }
+  #levels .lv .no { color:#6b7a63; font-size:11px; letter-spacing:1.5px; }
+  #levels .lv .nm { color:#e0e8d8; font-size:17px; margin:3px 0 5px; letter-spacing:2px; }
+  #levels .lv .df { color:#c8a24a; font-size:12px; letter-spacing:2px; }
+  #levels .lv .nt { color:#8a9682; font-size:11.5px; line-height:1.65; margin:7px 0 4px; min-height:44px; }
+  #levels .lv .st { color:#e8c559; font-size:15px; letter-spacing:3px; margin-top:6px; display:flex; justify-content:space-between; align-items:baseline; }
+  #levels .lv .rc { color:#7d8a76; font-size:11px; letter-spacing:0; }
+  #levels .lv .nw { color:#d08a5a; font-size:11px; margin-top:4px; letter-spacing:0.5px; }
+  #levels .lv .boss { color:#c0392b; font-size:12px; margin-top:4px; letter-spacing:2px; }
+  /* 按星球分组（登山赛车那种 stage 分组） */
+  #levels .grid { display:block; max-width:1240px; }
+  #levels .pgrp { margin-bottom:24px; }
+  #levels .pname { color:#c9d4c0; font-size:15px; letter-spacing:6px; margin-bottom:10px;
+                   padding-bottom:7px; border-bottom:1px solid #2e3a26;
+                   display:flex; align-items:baseline; gap:16px; }
+  #levels .pname span { color:#6b7a63; font-size:11.5px; letter-spacing:1px; }
+  #levels .prow { display:flex; flex-wrap:wrap; gap:14px; }
+  #levels .lv .gmk { color:#7fb0d0; font-size:11px; margin-top:5px; line-height:1.55; letter-spacing:0.3px; }
+  /* ── 角色 / Perk / 图鉴 / 成就 ── */
+  #chars, #perks, #codex, #ach { justify-content:flex-start; padding-top:4.5vh; overflow-y:auto; }
+  #chars h2, #perks h2, #codex h2, #ach h2 { font-size:26px; letter-spacing:8px; color:#c9d4c0; }
+  #chars .cash, #perks .cash, #codex .cash, #ach .cash { color:#e8c559; font-size:17px; margin:4px 0 14px; letter-spacing:2px; }
+  #chars .btn, #perks .btn, #codex .btn, #ach .btn { margin-top:8px; }
+  .tabs.nav { margin-bottom:16px; }
+  .tabs.nav .tab { cursor:pointer; }
+  .tabs.nav .tab:hover { border-color:#8aa46a; color:#c9d4c0; }
+  /* 角色卡 */
+  .ccard { width:250px; background:rgba(24,30,20,0.94); border:2px solid #3c4a30; border-radius:6px;
+           padding:13px 15px; text-align:left; cursor:pointer; transition:all .12s; }
+  .ccard:hover { border-color:#8aa46a; transform:translateY(-3px); }
+  .ccard.sel { border-color:#e8c559; background:rgba(50,46,26,0.96); }
+  .ccard.lock { opacity:0.45; cursor:not-allowed; }
+  .ccard.lock:hover { border-color:#3c4a30; transform:none; }
+  .ccard .cn { color:#e0e8d8; font-size:17px; letter-spacing:2px; margin-bottom:5px; }
+  .ccard .cd { color:#8a9682; font-size:11.5px; line-height:1.65; min-height:56px; }
+  .ccard .cs { color:#c8a24a; font-size:11.5px; margin-top:6px; }
+  .ccard .cu { color:#7d8a76; font-size:11px; margin-top:4px; }
+  /* Perk 三列 */
+  .perkcols { display:flex; gap:22px; margin-bottom:16px; align-items:flex-start; }
+  .pcol { width:340px; }
+  .pcol h3 { color:#c9d4c0; font-size:14px; letter-spacing:5px; margin-bottom:9px;
+             padding-bottom:6px; border-bottom:1px solid #2e3a26; }
+  .pcard { background:rgba(24,30,20,0.92); border:2px solid #3c4a30; border-radius:5px;
+           padding:9px 12px; margin-bottom:9px; cursor:pointer; transition:all .1s; }
+  .pcard:hover { border-color:#8aa46a; }
+  .pcard.on { border-color:#e8c559; background:rgba(50,46,26,0.96); }
+  .pcard.max { opacity:0.75; }
+  .pcard .pn { color:#e0e8d8; font-size:14px; }
+  .pcard .pn .lv { float:right; color:#e8c559; font-size:12px; letter-spacing:1px; }
+  .pcard .pd { color:#8a9682; font-size:11px; margin-top:3px; }
+  .pcard .pc { color:#c8a24a; font-size:11.5px; margin-top:5px; }
+  .pcard .pc.no { color:#8c4038; }
+  .pcard .pc.max { color:#7a9a5c; }
+  /* 图鉴 */
+  .xcard { width:196px; background:rgba(24,30,20,0.92); border:2px solid #3c4a30; border-radius:6px;
+           padding:10px 12px; text-align:left; }
+  .xcard.lock { opacity:0.42; }
+  .xcard .xn { color:#e0e8d8; font-size:14px; margin-bottom:4px; }
+  .xcard .xi { height:52px; display:flex; align-items:center; justify-content:center; margin-bottom:5px; }
+  .xcard .xi img { max-width:170px; max-height:52px; }
+  .xcard .xd { color:#8a9682; font-size:10.5px; line-height:1.6; }
+  .xcard .xr { color:#c8a24a; font-size:10.5px; margin-top:4px; }
+  /* 成就 */
+  .acard { width:300px; background:rgba(24,30,20,0.92); border:2px solid #3c4a30; border-radius:6px;
+           padding:10px 13px; text-align:left; }
+  .acard.got { border-color:#e8c559; background:rgba(50,46,26,0.94); }
+  .acard .an { color:#e0e8d8; font-size:14px; }
+  .acard .an .tick { float:right; color:#e8c559; }
+  .acard .ad { color:#8a9682; font-size:11px; margin-top:4px; line-height:1.6; }
+  .acard .ar { color:#7a9a5c; font-size:11px; margin-top:4px; }
+</style>
+</head>
+<body>
+<canvas id="game" width="1280" height="720"></canvas>
+
+<div id="menu" class="ov">
+  <h1 class="title">僵尸<span>村庄</span>2</h1>
+  <div class="sub">ZOMBIE VILLAGE 2 · 你是村里最后的幸存者</div>
+  <div class="controls">
+    <b>← →</b> 左右移动（同时决定朝向）&nbsp;&nbsp; <b>↑</b> 跳跃<br>
+    <b>空格</b> 开火 / 挥砍（按住连发）&nbsp;&nbsp; <b>X</b> 换武器 &nbsp;&nbsp; <b>1 / 2 / 3</b> 直接选槽<br>
+    <b>P / ESC</b> 暂停 &nbsp;&nbsp; <b>M</b> 静音 &nbsp;&nbsp; <b>A / D / W</b> 也可以移动<br>
+    枪只能打水平方向 —— <b>跳起来开枪能打中头（爆头双倍伤害）</b><br>
+    走到街边亮着<b style="color:#9fe8a8">绿灯</b>的房子门口<b>向上跳</b>就能进去躲<br>
+    打光子弹就只能切近战 · 打碎垃圾桶木箱能补给 · 走到街道尽头的栅栏就算过关
+  </div>
+  <button class="btn" id="startBtn">进 入 关 卡 选 择</button>
+  <div class="hs" id="menuHs"></div>
+</div>
+
+<div id="shelf" class="ov hidden">
+  <h2>武 器 货 架</h2>
+  <div class="cash" id="shelfCash">金币 $0</div>
+  <div class="tabs" id="shelfTabs"></div>
+  <div class="rack" id="shelfRack"></div>
+  <div class="slotbar" id="shelfSlots"></div>
+  <div class="hintbar">
+    <b>← →</b> 选择 &nbsp;·&nbsp; <b>↑ ↓</b> 切分类 &nbsp;·&nbsp; <b>Enter</b> 购买 / 升级 &nbsp;·&nbsp;
+    <b>U</b> 撤销 &nbsp;·&nbsp; <b>1 2 3</b> 换装备槽 &nbsp;·&nbsp; <b>Esc</b> 结束本关
+  </div>
+  <button class="btn" id="shelfDoneBtn">离 开 货 架</button>
+</div>
+
+<div id="result" class="ov hidden">
+  <h1 class="title" id="resTitle">通 关</h1>
+  <div class="stars" id="resStars"></div>
+  <div class="stats" id="resStats"></div>
+  <button class="btn" id="resNextBtn">下 一 关</button>
+  <button class="btn red" id="resMenuBtn">回 关 卡 选 择</button>
+</div>
+
+<div id="levels" class="ov hidden">
+  <h2>关 卡 选 择</h2>
+  <div class="cash" id="lvCash">金币 $0</div>
+  <div class="tabs nav">
+    <button class="tab" id="navChars">角 色</button>
+    <button class="tab" id="navPerks">PERK</button>
+    <button class="tab" id="navCodex">图 鉴</button>
+    <button class="tab" id="navAch">成 就</button>
+  </div>
+  <div class="grid" id="lvGrid"></div>
+  <div class="hintbar">金币、武器、升级、Perk 都会永久保存 &nbsp;·&nbsp; 按 <b>ESC</b> 回主菜单</div>
+</div>
+
+<div id="chars" class="ov hidden">
+  <h2>角 色</h2>
+  <div class="cash" id="charHint">通关会解锁新角色</div>
+  <div class="prow" id="charRow"></div>
+  <button class="btn red" id="charsBack">返 回</button>
+</div>
+
+<div id="perks" class="ov hidden">
+  <h2>PERK</h2>
+  <div class="cash" id="perkHint">装备 3 个</div>
+  <div class="perkcols" id="perkCols"></div>
+  <div class="hintbar"><b>点击</b> 升级 / 装备 &nbsp;·&nbsp; <b>右键</b> 卸下 &nbsp;·&nbsp; 每个 Perk 最高 3 级</div>
+  <button class="btn red" id="perksBack">返 回</button>
+</div>
+
+<div id="codex" class="ov hidden">
+  <h2>图 鉴</h2>
+  <div class="tabs nav" id="codexTabs">
+    <button class="tab on" data-ct="weapon">武 器</button>
+    <button class="tab" data-ct="zombie">僵 尸</button>
+    <button class="tab" data-ct="prop">物 件</button>
+  </div>
+  <div class="prow" id="codexRow"></div>
+  <button class="btn red" id="codexBack">返 回</button>
+</div>
+
+<div id="ach" class="ov hidden">
+  <h2>成 就</h2>
+  <div class="cash" id="achHint">0 / 0</div>
+  <div class="prow" id="achRow"></div>
+  <button class="btn red" id="achBack">返 回</button>
+</div>
+
+<div id="pause" class="ov hidden">
+  <h2>暂 停</h2>
+  <div class="pstats" id="pauseStats"></div>
+  <div class="pbtns">
+    <button class="btn" id="resumeBtn">继 续</button>
+    <button class="btn" id="restartBtn">重 开 本 关</button>
+    <button class="btn red" id="quitBtn">回 关 卡 选 择</button>
+  </div>
+  <div class="hintbar">按 <b>P</b> 或 <b>ESC</b> 继续 &nbsp;·&nbsp; 按 <b>R</b> 重开本关</div>
+</div>
+
+<div id="toast"></div>
+
+<!-- 模块化：按加载顺序列出，全部是普通 script（file:// 下可直接双击打开） -->
+<script src="js/00-core.js"></script>
+<script src="js/01-input.js"></script>
+<script src="js/02-audio.js"></script>
+<script src="js/03-data.js"></script>
+<script src="js/04-state.js"></script>
+<script src="js/05-level.js"></script>
+<script src="js/06-props.js"></script>
+<script src="js/07-world.js"></script>
+<script src="js/08-zombies.js"></script>
+<script src="js/09-combat.js"></script>
+<script src="js/10-houses.js"></script>
+<script src="js/11-update.js"></script>
+<script src="js/12-render.js"></script>
+<script src="js/13-shelf.js"></script>
+<script src="js/14-ui.js"></script>
+<script src="js/15-main.js"></script>
+<script src="js/16-menus.js"></script>
+<script src="js/17-super.js"></script>
+
+</body>
+</html>
